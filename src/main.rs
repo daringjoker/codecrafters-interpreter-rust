@@ -1,6 +1,9 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+mod tokenizer;
+
+use tokenizer::tokenize::Tokenizer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -14,18 +17,32 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
                 String::new()
             });
-
-            if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
-            } else {
-                println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
+            let mut tokenizer = Tokenizer::new(file_contents);
+            let tokens = tokenizer.tokenize();
+            for token in tokens {
+                if token.is_ignorable() {
+                    continue; // Skip whitespace and comments
+                }
+                println!("{}", token);
+            }
+        }
+        "tokenize-string" => {
+            if args.len() < 3 {
+                writeln!(io::stderr(), "Usage: {} tokenize-string <string>", args[0]).unwrap();
+                return;
+            }
+            let input_string = &args[2];
+            let mut tokenizer = Tokenizer::new(input_string.clone());
+            let tokens = tokenizer.tokenize();
+            for token in tokens {
+                if token.is_ignorable() {
+                    continue; // Skip whitespace and comments
+                }
+                println!("{}", token);
             }
         }
         _ => {
