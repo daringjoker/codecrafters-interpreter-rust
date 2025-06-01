@@ -42,8 +42,8 @@ pub enum Token {
     BitwiseOr,
     BitwiseXor,
     BitwiseNot,
-    BitwiseShiftLeft,
-    BitwiseShiftRight,
+    // BitwiseShiftLeft,
+    // BitwiseShiftRight,
 
     // Punctuation
     SingleQuote,
@@ -103,8 +103,8 @@ impl Display for Token {
             Token::BitwiseOr => write!(f, "BITWISE_OR | null"),
             Token::BitwiseXor => write!(f, "BITWISE_XOR ^ null"),
             Token::BitwiseNot => write!(f, "BitwiseNot"),
-            Token::BitwiseShiftLeft => write!(f, "BITWISE_SHIFT_LEFT << null"),
-            Token::BitwiseShiftRight => write!(f, "BITWISE_SHIFT_RIGHT >> null"),
+            // Token::BitwiseShiftLeft => write!(f, "BITWISE_SHIFT_LEFT << null"),
+            // Token::BitwiseShiftRight => write!(f, "BITWISE_SHIFT_RIGHT >> null"),
             Token::SingleQuote => write!(f, "SINGLE_QUOTE ' null"),
             Token::DoubleQuote => write!(f, "DOUBLE_QUOTE \" null"),
             Token::Backtick => write!(f, "BACKTICK ` null"),

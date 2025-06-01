@@ -119,8 +119,8 @@ impl Tokenizer {
                 ">=" => Some(Token::GreaterThanOrEqual),
                 "&&" => Some(Token::And),
                 "||" => Some(Token::Or),
-                "<<" => Some(Token::BitwiseShiftLeft),
-                ">>" => Some(Token::BitwiseShiftRight),
+                // "<<" => Some(Token::BitwiseShiftLeft),
+                // ">>" => Some(Token::BitwiseShiftRight),
                 // "++" => Some(Token::Increment),
                 // "--" => Some(Token::Decrement),
                 "//" => Some(Token::Comment(String::new())), // Placeholder for comments
