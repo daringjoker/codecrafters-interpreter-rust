@@ -133,8 +133,13 @@ impl Tokenizer {
                     let mut current_word = String::new();
                     current_word.push(c);
                     self.advance();
+                    let mut found_dot = false;
                     while let Some(next_char) = self.char {
-                        if next_char.is_digit(10) {
+                        if next_char == '.' && !found_dot {
+                            found_dot = true; // Allow one dot for decimal numbers
+                            current_word.push(next_char);
+                            self.advance();
+                        } else if next_char.is_digit(10) {
                             current_word.push(next_char);
                             self.advance();
                         } else {

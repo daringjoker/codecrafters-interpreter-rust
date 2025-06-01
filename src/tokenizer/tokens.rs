@@ -85,7 +85,7 @@ impl Token {
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Number(n) => write!(f, "NUMBER {} {}", n, n.parse::<f64>().unwrap_or(0.0)),
+            Token::Number(n) => write!(f, "NUMBER {} {:?}", n, n.parse::<f64>().unwrap_or(0.0)),
             Token::Identifier(id) => write!(f, "IDENTIFIER {} null", id),
             Token::StringLiteral(s) => write!(f, "STRING \"{}\" {}", s, s),
             Token::InterpolatedString(s) => write!(f, "InterpolatedString({})", s),
