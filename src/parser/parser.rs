@@ -112,15 +112,15 @@ impl Parser {
         if self.current.is_none() {
             unreachable!("should not be calling parse_statement on empty tokens");
         }
-        match &self.current {
-            Some(Token::KEYWORD(keyword)) => self.parse_keyword(keyword),
-            Some(Token::Number(num)) => Ok(ASTNode::Expression(Expression::Literal(
+        match self.current.as_mut().unwrap().clone() {
+            Token::KEYWORD(keyword) => self.parse_keyword(&keyword),
+            Token::Number(num) => Ok(ASTNode::Expression(Expression::Literal(
                 Literal::NumberFloat(num.clone().parse::<f64>().unwrap()),
             ))),
-            Some(Token::StringLiteral(string)) => Ok(ASTNode::Expression(Expression::Literal(
+            Token::StringLiteral(string) => Ok(ASTNode::Expression(Expression::Literal(
                 Literal::String(string.clone()),
             ))),
-            Some(Token::LeftParenthesis) => {
+            Token::LeftParenthesis => {
                 self.advance(); // consume the left parenthesis
                 self.consume_whitespace();
                 let expr = self.parse_statement()?;
@@ -131,22 +131,29 @@ impl Parser {
                 }
                 Ok(ASTNode::Expression(Expression::Group(Box::new(expr))))
             }
-            Some(Token::Not) => {
+            Token::Not | Token::Minus => {
+                let current = self.current.clone();
                 self.advance(); // consume the NOT token
                 self.consume_whitespace();
                 let expr = self.parse_statement();
+                let operator = match current.unwrap().clone() {
+                    Token::Not => UnaryOperator::Not,
+                    Token::Minus => UnaryOperator::Negate,
+                    _ => return Err("Expected NOT or MINUS operator".to_string()),
+                };
+
                 if let Ok(ASTNode::Expression(exp)) = expr {
                     Ok(ASTNode::Expression(Expression::UnaryOperation(
                         UnaryOperation {
-                            operator: UnaryOperator::Not,
+                            operator,
                             operand: Box::new(exp),
                         },
                     )))
                 } else {
-                    Err("Expected expression after NOT".to_string())
+                    Err(format!("Expected expression after {}", operator))
                 }
             }
-            Some(Token::EOF) => Ok(ASTNode::EOF),
+            (Token::EOF) => Ok(ASTNode::EOF),
             _ => unimplemented!("Yet to implement"),
         }
     }
