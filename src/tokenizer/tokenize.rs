@@ -88,7 +88,7 @@ impl Tokenizer {
                 '-' => Some(Token::Minus),
                 '*' => Some(Token::Multiply),
                 '/' => Some(Token::Divide),
-                '%' => Some(Token::Modulus),
+                // '%' => Some(Token::Modulus),
                 ',' => Some(Token::Comma),
                 ';' => Some(Token::Semicolon),
                 ':' => Some(Token::Colon),

@@ -15,7 +15,7 @@ pub enum Token {
     Minus,
     Multiply,
     Divide,
-    Modulus,
+    // Modulus,
 
     // Increment and Decrement Operators
     // Increment,
@@ -86,7 +86,7 @@ impl Display for Token {
             Token::Minus => write!(f, "MINUS - null"),
             Token::Multiply => write!(f, "STAR * null"),
             Token::Divide => write!(f, "SLASH / null"),
-            Token::Modulus => write!(f, "MODULUS % null"),
+            // Token::Modulus => write!(f, "MODULUS % null"),
             // Token::Increment => write!(f, "INCREMENT ++ null"),
             // Token::Decrement => write!(f, "DECREMENT -- null"),
             Token::Assignment => write!(f, "EQUAL = null"),
@@ -123,7 +123,7 @@ impl Display for Token {
             Token::EOF => write!(f, "EOF  null"),
             Token::Error(msg, pos) => write!(f, "[line {}] ERROR: {}", pos.line, msg),
             Token::UnexpectedCharacter(c, pos) => {
-                write!(f, "[line {}] ERROR: Unexpected character: {}", pos.line, c)
+                write!(f, "[line {}] Error: Unexpected character: {}", pos.line, c)
             }
         }
     }
