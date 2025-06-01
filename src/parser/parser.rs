@@ -78,6 +78,18 @@ impl Parser {
             Some(Token::StringLiteral(string)) => Ok(ASTNode::Expression(Expression::Literal(
                 Literal::String(string.clone()),
             ))),
+            Some(Token::LeftParenthesis) => {
+                self.advance(); // consume the left parenthesis
+                self.consume_whitespace();
+                let expr = self.parse_statement()?;
+                self.advance(); // move to the next token after the expression
+                self.consume_whitespace();
+                if self.current != Some(Token::RightParenthesis) {
+                    return Err("Expected right parenthesis".to_string());
+                }
+                self.advance(); // consume the right parenthesis
+                Ok(ASTNode::Expression(Expression::Group(Box::new(expr))))
+            }
             Some(Token::EOF) => Ok(ASTNode::EOF),
             _ => unimplemented!("Yet to implement"),
         }

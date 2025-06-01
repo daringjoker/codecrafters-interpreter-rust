@@ -11,6 +11,7 @@ pub enum ASTNode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
+    Group(Box<ASTNode>),
     Literal(Literal),
     Identifier(String),
     BinaryOperation(BinaryOperation),
@@ -151,6 +152,7 @@ impl Display for Expression {
             Expression::Identifier(id) => write!(f, "{}", id),
             Expression::BinaryOperation(op) => write!(f, "{}", op),
             Expression::UnaryOperation(op) => write!(f, "{}", op),
+            Expression::Group(node) => write!(f, "(group {})", node),
         }
     }
 }
@@ -178,7 +180,7 @@ impl Display for Declaration {
 impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Literal::NumberFloat(val) => write!(f, "{}", val),
+            Literal::NumberFloat(val) => write!(f, "{:?}", val),
             Literal::NumberInteger(val) => write!(f, "{}", val),
             Literal::String(val) => write!(f, "\"{}\"", val),
             Literal::Boolean(val) => write!(f, "{}", val),
