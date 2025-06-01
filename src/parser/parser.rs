@@ -11,6 +11,11 @@ pub struct Parser {
     current_index: usize,
 }
 
+pub enum Expectable {
+    Token(Token),
+    ASTNode(ASTNode),
+}
+
 impl Parser {
     pub fn new(file_content: String) -> Self {
         let mut tokenizer = Tokenizer::new(file_content);
@@ -24,6 +29,43 @@ impl Parser {
         };
         instance.update_state();
         instance
+    }
+
+    pub fn parse_sequence(&mut self, tokens: &[Expectable]) -> Result<Vec<Expectable>, String> {
+        let mut parsed = vec![];
+        for token in tokens {
+            self.consume_whitespace();
+            match token {
+                Expectable::Token(tok) => {
+                    if self.current.is_none() {
+                        return Err(format!("expected {} got Unexpected End of Input", tok));
+                    } else {
+                        if self.current.as_mut().unwrap() == tok {
+                            parsed.push(Expectable::Token(self.current.as_mut().unwrap().clone()));
+                        } else {
+                            return Err(format!(
+                                "Expected {} got {}",
+                                tok,
+                                self.current.as_mut().unwrap()
+                            ));
+                        }
+                    }
+                }
+                Expectable::ASTNode(node) => {
+                    if self.current.is_none() {
+                        return Err(format!("expected {} got Unexpected End of Input", node));
+                    }
+                    match node {
+                        _ => {
+                            let expr = self.parse_statement()?;
+                            parsed.push(Expectable::ASTNode(expr));
+                        }
+                    }
+                }
+            }
+            self.advance();
+        }
+        return Ok(parsed);
     }
 
     pub fn advance(&mut self) {
@@ -87,8 +129,22 @@ impl Parser {
                 if self.current != Some(Token::RightParenthesis) {
                     return Err("Expected right parenthesis".to_string());
                 }
-                self.advance(); // consume the right parenthesis
                 Ok(ASTNode::Expression(Expression::Group(Box::new(expr))))
+            }
+            Some(Token::Not) => {
+                self.advance(); // consume the NOT token
+                self.consume_whitespace();
+                let expr = self.parse_statement();
+                if let Ok(ASTNode::Expression(exp)) = expr {
+                    Ok(ASTNode::Expression(Expression::UnaryOperation(
+                        UnaryOperation {
+                            operator: UnaryOperator::Not,
+                            operand: Box::new(exp),
+                        },
+                    )))
+                } else {
+                    Err("Expected expression after NOT".to_string())
+                }
             }
             Some(Token::EOF) => Ok(ASTNode::EOF),
             _ => unimplemented!("Yet to implement"),

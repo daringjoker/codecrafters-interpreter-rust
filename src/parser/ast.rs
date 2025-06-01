@@ -71,8 +71,8 @@ pub struct BinaryOperation {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryOperation {
-    operator: UnaryOperator,
-    operand: Box<Expression>,
+    pub operator: UnaryOperator,
+    pub operand: Box<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -191,13 +191,13 @@ impl Display for Literal {
 
 impl Display for BinaryOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({} {:?} {})", self.left, self.operator, self.right)
+        write!(f, "({} {} {})", self.left, self.operator, self.right)
     }
 }
 
 impl Display for UnaryOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({:?} {})", self.operator, self.operand)
+        write!(f, "({} {})", self.operator, self.operand)
     }
 }
 
@@ -308,6 +308,15 @@ impl Display for BinaryOperator {
             BinaryOperator::LessThan => write!(f, "<"),
             BinaryOperator::GreaterThanOrEqual => write!(f, ">="),
             BinaryOperator::LessThanOrEqual => write!(f, "<="),
+        }
+    }
+}
+
+impl Display for UnaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnaryOperator::Negate => write!(f, "-"),
+            UnaryOperator::Not => write!(f, "!"),
         }
     }
 }
