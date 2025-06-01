@@ -72,6 +72,12 @@ impl Parser {
         }
         match &self.current {
             Some(Token::KEYWORD(keyword)) => self.parse_keyword(keyword),
+            Some(Token::Number(num)) => Ok(ASTNode::Expression(Expression::Literal(
+                Literal::NumberFloat(num.clone().parse::<f64>().unwrap()),
+            ))),
+            Some(Token::StringLiteral(string)) => Ok(ASTNode::Expression(Expression::Literal(
+                Literal::String(string.clone()),
+            ))),
             Some(Token::EOF) => Ok(ASTNode::EOF),
             _ => unimplemented!("Yet to implement"),
         }
