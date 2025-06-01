@@ -27,11 +27,11 @@ fn main() {
             let mut tokenizer = Tokenizer::new(file_contents);
             let tokens = tokenizer.tokenize();
             for token in tokens {
-                if token.is_ignorable() {
-                    continue; // Skip whitespace and comments
-                }
                 match token {
-                    Token::UnexpectedCharacter(_, _) => {
+                    _ if token.is_ignorable() => {
+                        // Do nothing, skip this token
+                    }
+                    _ if token.is_error() => {
                         eprintln!("{}", token);
                     }
                     _ => println!("{}", token),

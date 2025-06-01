@@ -46,8 +46,11 @@ pub enum Token {
     // BitwiseShiftRight,
 
     // Punctuation
+    #[allow(dead_code)]
     SingleQuote,
+    #[allow(dead_code)]
     DoubleQuote,
+    #[allow(dead_code)]
     Backtick,
     Comma,
     Semicolon,
@@ -66,12 +69,16 @@ pub enum Token {
 
     // Lexical errors
     UnexpectedCharacter(char, Position),
+    #[allow(dead_code)]
     Error(String, Position),
 }
 
 impl Token {
     pub fn is_ignorable(&self) -> bool {
         matches!(self, Token::Whitespace(_) | Token::Comment(_))
+    }
+    pub fn is_error(&self) -> bool {
+        matches!(self, Token::UnexpectedCharacter(_, _) | Token::Error(_, _))
     }
 }
 
@@ -121,7 +128,7 @@ impl Display for Token {
             Token::Whitespace(ws) => write!(f, ""), // we don't print whitespace tokens
             Token::Comment(comment) => write!(f, "COMMENT {} null", comment),
             Token::EOF => write!(f, "EOF  null"),
-            Token::Error(msg, pos) => write!(f, "[line {}] ERROR: {}", pos.line, msg),
+            Token::Error(msg, pos) => write!(f, "[line {}] Error: {}", pos.line, msg),
             Token::UnexpectedCharacter(c, pos) => {
                 write!(f, "[line {}] Error: Unexpected character: {}", pos.line, c)
             }

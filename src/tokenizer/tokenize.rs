@@ -81,7 +81,6 @@ impl Tokenizer {
 
     pub fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
-        let mut current_word = String::new();
         fn single_character_token(c: char) -> Option<Token> {
             match c {
                 '+' => Some(Token::Plus),
@@ -131,6 +130,7 @@ impl Tokenizer {
         while let Some(c) = self.char {
             match c {
                 '0'..='9' => {
+                    let mut current_word = String::new();
                     current_word.push(c);
                     self.advance();
                     while let Some(next_char) = self.char {
@@ -142,9 +142,9 @@ impl Tokenizer {
                         }
                     }
                     tokens.push(Token::Number(current_word.clone()));
-                    current_word.clear();
                 }
                 'a'..='z' | 'A'..='Z' | '_' => {
+                    let mut current_word = String::new();
                     current_word.push(c);
                     self.advance();
                     while let Some(next_char) = self.char {
@@ -156,44 +156,61 @@ impl Tokenizer {
                         }
                     }
                     tokens.push(Token::Identifier(current_word.clone()));
-                    current_word.clear();
                 }
                 '\'' => {
+                    let mut current_word = String::new();
+                    let mut terminated = false;
                     self.advance(); // Skip the opening quote
                     while let Some(next_char) = self.char {
                         if next_char == '\'' {
                             self.advance(); // Skip the closing quote
-                            tokens.push(Token::SingleQuote);
+                            terminated = true;
                             break;
                         } else {
                             current_word.push(next_char);
                             self.advance();
                         }
                     }
-                    tokens.push(Token::StringLiteral(current_word.clone()));
-                    current_word.clear();
+                    if !terminated {
+                        self.healthy = false; // Mark as unhealthy if not terminated
+                        tokens.push(Token::Error(
+                            "Unterminated string.".to_string(),
+                            self.position.clone(),
+                        ));
+                    } else {
+                        tokens.push(Token::StringLiteral(current_word.clone()));
+                    }
                 }
                 '"' => {
+                    let mut current_word = String::new();
                     self.advance(); // Skip the opening quote
+                    let mut terminated = false;
                     while let Some(next_char) = self.char {
                         if next_char == '"' {
                             self.advance(); // Skip the closing quote
-                            tokens.push(Token::DoubleQuote);
+                            terminated = true;
                             break;
                         } else {
                             current_word.push(next_char);
                             self.advance();
                         }
                     }
-                    tokens.push(Token::StringLiteral(current_word.clone()));
-                    current_word.clear();
+                    if !terminated {
+                        self.healthy = false; // Mark as unhealthy if not terminated
+                        tokens.push(Token::Error(
+                            "Unterminated string.".to_string(),
+                            self.position.clone(),
+                        ));
+                    } else {
+                        tokens.push(Token::StringLiteral(current_word.clone()));
+                    }
                 }
                 '`' => {
+                    let mut current_word = String::new();
                     self.advance(); // Skip the opening backtick
                     while let Some(next_char) = self.char {
                         if next_char == '`' {
                             self.advance(); // Skip the closing backtick
-                            tokens.push(Token::Backtick);
                             break;
                         } else {
                             current_word.push(next_char);
