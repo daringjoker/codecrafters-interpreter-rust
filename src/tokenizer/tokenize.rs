@@ -1,6 +1,6 @@
+use super::tokens::{Keyword, Token};
 use std::cmp::min;
 
-use super::tokens::Token;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Position {
     pub line: usize,
@@ -126,6 +126,27 @@ impl Tokenizer {
                 _ => None,
             }
         }
+        fn keyword_from(word: &str) -> Option<Token> {
+            match word {
+                "if" => Some(Token::KEYWORD(Keyword::IF)),
+                "else" => Some(Token::KEYWORD(Keyword::ELSE)),
+                "while" => Some(Token::KEYWORD(Keyword::WHILE)),
+                "for" => Some(Token::KEYWORD(Keyword::FOR)),
+                "return" => Some(Token::KEYWORD(Keyword::RETURN)),
+                "fun" => Some(Token::KEYWORD(Keyword::FUN)),
+                "var" => Some(Token::KEYWORD(Keyword::VAR)),
+                "nil" => Some(Token::KEYWORD(Keyword::NIL)),
+                "true" => Some(Token::KEYWORD(Keyword::TRUE)),
+                "false" => Some(Token::KEYWORD(Keyword::FALSE)),
+                "class" => Some(Token::KEYWORD(Keyword::CLASS)),
+                "print" => Some(Token::KEYWORD(Keyword::PRINT)),
+                "super" => Some(Token::KEYWORD(Keyword::SUPER)),
+                "this" => Some(Token::KEYWORD(Keyword::THIS)),
+                "and" => Some(Token::KEYWORD(Keyword::AND)),
+                "or" => Some(Token::KEYWORD(Keyword::OR)),
+                _ => None,
+            }
+        }
 
         while let Some(c) = self.char {
             match c {
@@ -160,7 +181,11 @@ impl Tokenizer {
                             break;
                         }
                     }
-                    tokens.push(Token::Identifier(current_word.clone()));
+                    if let Some(keyword_token) = keyword_from(&current_word) {
+                        tokens.push(keyword_token);
+                    } else {
+                        tokens.push(Token::Identifier(current_word.clone()));
+                    }
                 }
                 '\'' => {
                     let mut current_word = String::new();

@@ -3,9 +3,30 @@ use std::fmt::Display;
 use super::tokenize::Position;
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum Keyword {
+    AND,
+    CLASS,
+    ELSE,
+    FALSE,
+    FOR,
+    FUN,
+    IF,
+    NIL,
+    OR,
+    PRINT,
+    RETURN,
+    SUPER,
+    THIS,
+    TRUE,
+    VAR,
+    WHILE,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Number(String),
     Identifier(String),
+    KEYWORD(Keyword),
     StringLiteral(String),
     InterpolatedString(String),
 
@@ -87,6 +108,24 @@ impl Display for Token {
         match self {
             Token::Number(n) => write!(f, "NUMBER {} {:?}", n, n.parse::<f64>().unwrap_or(0.0)),
             Token::Identifier(id) => write!(f, "IDENTIFIER {} null", id),
+            Token::KEYWORD(kw) => match kw {
+                Keyword::AND => write!(f, "AND and null"),
+                Keyword::CLASS => write!(f, "CLASS class null"),
+                Keyword::ELSE => write!(f, "ELSE else null"),
+                Keyword::FALSE => write!(f, "FALSE false null"),
+                Keyword::FOR => write!(f, "FOR for null"),
+                Keyword::FUN => write!(f, "FUN fun null"),
+                Keyword::IF => write!(f, "IF if null"),
+                Keyword::NIL => write!(f, "NIL nil null"),
+                Keyword::OR => write!(f, "OR or null"),
+                Keyword::PRINT => write!(f, "PRINT print null"),
+                Keyword::RETURN => write!(f, "RETURN return null"),
+                Keyword::SUPER => write!(f, "SUPER super null"),
+                Keyword::THIS => write!(f, "THIS this null"),
+                Keyword::TRUE => write!(f, "TRUE true null"),
+                Keyword::VAR => write!(f, "VAR var null"),
+                Keyword::WHILE => write!(f, "WHILE while null"),
+            },
             Token::StringLiteral(s) => write!(f, "STRING \"{}\" {}", s, s),
             Token::InterpolatedString(s) => write!(f, "InterpolatedString({})", s),
             Token::Plus => write!(f, "PLUS + null"),
