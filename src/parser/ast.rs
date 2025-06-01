@@ -182,7 +182,7 @@ impl Display for Literal {
         match self {
             Literal::NumberFloat(val) => write!(f, "{:?}", val),
             Literal::NumberInteger(val) => write!(f, "{}", val),
-            Literal::String(val) => write!(f, "\"{}\"", val),
+            Literal::String(val) => write!(f, "{}", val),
             Literal::Boolean(val) => write!(f, "{}", val),
             Literal::NIL => write!(f, "nil"),
         }
