@@ -1,9 +1,10 @@
 use std::cmp::min;
 
 use super::tokens::Token;
+#[derive(Debug, Clone, PartialEq)]
 pub struct Position {
-    line: usize,
-    column: usize,
+    pub line: usize,
+    pub column: usize,
 }
 
 pub struct Tokenizer {
@@ -11,6 +12,7 @@ pub struct Tokenizer {
     current_index: usize,
     char: Option<char>,
     position: Position,
+    healthy: bool,
 }
 
 impl Tokenizer {
@@ -20,9 +22,14 @@ impl Tokenizer {
             current_index: 0,
             char: None,
             position: Position { line: 1, column: 1 },
+            healthy: true,
         };
         tokenizer.advance(); // Initialize the first character
         tokenizer
+    }
+
+    pub fn has_errors(&self) -> bool {
+        !self.healthy
     }
 
     pub fn seek(&self, len: Option<usize>, start: Option<usize>) -> Option<String> {
@@ -236,7 +243,9 @@ impl Tokenizer {
                             tokens.push(token);
                             self.advance();
                         } else {
-                            panic!("Unexpected character: '{}'", c);
+                            tokens.push(Token::UnexpectedCharacter(c, self.position.clone()));
+                            self.advance();
+                            self.healthy = false; // Mark as unhealthy on unexpected character
                         }
                     }
                 }

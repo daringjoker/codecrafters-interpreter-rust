@@ -1,9 +1,12 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::os::unix::process;
+use std::process::exit;
 mod tokenizer;
 
 use tokenizer::tokenize::Tokenizer;
+use tokenizer::tokens::Token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +30,16 @@ fn main() {
                 if token.is_ignorable() {
                     continue; // Skip whitespace and comments
                 }
-                println!("{}", token);
+                match token {
+                    Token::UnexpectedCharacter(_, _) => {
+                        eprintln!("{}", token);
+                    }
+                    _ => println!("{}", token),
+                }
+            }
+            if tokenizer.has_errors() {
+                exit(65);
+            } else {
             }
         }
         "tokenize-string" => {

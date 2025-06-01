@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use super::tokenize::Position;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Number(String),
@@ -61,6 +63,10 @@ pub enum Token {
     Whitespace(String),
     Comment(String),
     EOF,
+
+    // Lexical errors
+    UnexpectedCharacter(char, Position),
+    Error(String, Position),
 }
 
 impl Token {
@@ -115,6 +121,10 @@ impl Display for Token {
             Token::Whitespace(ws) => write!(f, ""), // we don't print whitespace tokens
             Token::Comment(comment) => write!(f, "COMMENT {} null", comment),
             Token::EOF => write!(f, "EOF  null"),
+            Token::Error(msg, pos) => write!(f, "[line {}] ERROR: {}", pos.line, msg),
+            Token::UnexpectedCharacter(c, pos) => {
+                write!(f, "[line {}] ERROR: Unexpected character: {}", pos.line, c)
+            }
         }
     }
 }
