@@ -1,12 +1,12 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use std::os::unix::process;
 use std::process::exit;
+mod parser;
 mod tokenizer;
 
+use parser::parser::Parser;
 use tokenizer::tokenize::Tokenizer;
-use tokenizer::tokens::Token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,6 +40,21 @@ fn main() {
             if tokenizer.has_errors() {
                 exit(65);
             } else {
+            }
+        }
+        "parse" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                String::new()
+            });
+            let mut parser = Parser::new(file_contents);
+            match parser.parse() {
+                Ok(tree) => {
+                    writeln!(io::stdout(), "{}", tree).unwrap();
+                }
+                Err(msg) => {
+                    panic!("{}", msg);
+                }
             }
         }
         "tokenize-string" => {
