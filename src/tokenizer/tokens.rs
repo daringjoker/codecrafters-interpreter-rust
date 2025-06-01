@@ -98,7 +98,7 @@ impl Display for Token {
             Token::LessThanOrEqual => write!(f, "LESS_EQUAL <= null"),
             Token::And => write!(f, "AND && null"),
             Token::Or => write!(f, "OR || null"),
-            Token::Not => write!(f, "NOT ! null"),
+            Token::Not => write!(f, "BANG ! null"),
             Token::BitwiseAnd => write!(f, "BITWISE_AND & null"),
             Token::BitwiseOr => write!(f, "BITWISE_OR | null"),
             Token::BitwiseXor => write!(f, "BITWISE_XOR ^ null"),
