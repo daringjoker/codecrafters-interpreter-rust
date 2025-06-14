@@ -4,14 +4,12 @@ use std::fmt::Display;
 pub enum ASTNode {
     Expression(Expression),
     Statement(Statement),
-    Declaration(Declaration),
-    Block(Block),
     EOF,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Group(Box<ASTNode>),
+    Group(Box<Expression>),
     Literal(Literal),
     Identifier(String),
     BinaryOperation(BinaryOperation),
@@ -24,6 +22,8 @@ pub enum Statement {
     While(WhileStatement),
     For(ForStatement),
     Return(ReturnStatement),
+    Declaration(Declaration),
+    Block(Block),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -60,13 +60,14 @@ pub enum BinaryOperator {
 pub enum UnaryOperator {
     Negate,
     Not,
+    Plus,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryOperation {
-    left: Box<Expression>,
-    operator: BinaryOperator,
-    right: Box<Expression>,
+    pub left: Box<Expression>,
+    pub operator: BinaryOperator,
+    pub right: Box<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -139,8 +140,6 @@ impl Display for ASTNode {
         match self {
             ASTNode::Expression(expr) => write!(f, "{}", expr),
             ASTNode::Statement(stmt) => write!(f, "{}", stmt),
-            ASTNode::Declaration(decl) => write!(f, "{}", decl),
-            ASTNode::Block(block) => write!(f, "{}", block),
             ASTNode::EOF => write!(f, ""),
         }
     }
@@ -164,6 +163,8 @@ impl Display for Statement {
             Statement::While(stmt) => write!(f, "{}", stmt),
             Statement::For(stmt) => write!(f, "{}", stmt),
             Statement::Return(stmt) => write!(f, "{}", stmt),
+            Statement::Declaration(stmt) => write!(f, "{}", stmt),
+            Statement::Block(stmt) => write!(f, "{}", stmt),
         }
     }
 }
@@ -191,7 +192,7 @@ impl Display for Literal {
 
 impl Display for BinaryOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({} {} {})", self.left, self.operator, self.right)
+        write!(f, "({} {} {})", self.operator, self.left, self.right)
     }
 }
 
@@ -317,6 +318,7 @@ impl Display for UnaryOperator {
         match self {
             UnaryOperator::Negate => write!(f, "-"),
             UnaryOperator::Not => write!(f, "!"),
+            UnaryOperator::Plus => write!(f, "+"),
         }
     }
 }

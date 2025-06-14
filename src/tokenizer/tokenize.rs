@@ -1,4 +1,4 @@
-use super::tokens::{Keyword, Token};
+use super::tokens::{Token, KW};
 use std::cmp::min;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -128,22 +128,22 @@ impl Tokenizer {
         }
         fn keyword_from(word: &str) -> Option<Token> {
             match word {
-                "if" => Some(Token::KEYWORD(Keyword::IF)),
-                "else" => Some(Token::KEYWORD(Keyword::ELSE)),
-                "while" => Some(Token::KEYWORD(Keyword::WHILE)),
-                "for" => Some(Token::KEYWORD(Keyword::FOR)),
-                "return" => Some(Token::KEYWORD(Keyword::RETURN)),
-                "fun" => Some(Token::KEYWORD(Keyword::FUN)),
-                "var" => Some(Token::KEYWORD(Keyword::VAR)),
-                "nil" => Some(Token::KEYWORD(Keyword::NIL)),
-                "true" => Some(Token::KEYWORD(Keyword::TRUE)),
-                "false" => Some(Token::KEYWORD(Keyword::FALSE)),
-                "class" => Some(Token::KEYWORD(Keyword::CLASS)),
-                "print" => Some(Token::KEYWORD(Keyword::PRINT)),
-                "super" => Some(Token::KEYWORD(Keyword::SUPER)),
-                "this" => Some(Token::KEYWORD(Keyword::THIS)),
-                "and" => Some(Token::KEYWORD(Keyword::AND)),
-                "or" => Some(Token::KEYWORD(Keyword::OR)),
+                "if" => Some(Token::Keyword(KW::IF)),
+                "else" => Some(Token::Keyword(KW::ELSE)),
+                "while" => Some(Token::Keyword(KW::WHILE)),
+                "for" => Some(Token::Keyword(KW::FOR)),
+                "return" => Some(Token::Keyword(KW::RETURN)),
+                "fun" => Some(Token::Keyword(KW::FUN)),
+                "var" => Some(Token::Keyword(KW::VAR)),
+                "nil" => Some(Token::Keyword(KW::NIL)),
+                "true" => Some(Token::Keyword(KW::TRUE)),
+                "false" => Some(Token::Keyword(KW::FALSE)),
+                "class" => Some(Token::Keyword(KW::CLASS)),
+                "print" => Some(Token::Keyword(KW::PRINT)),
+                "super" => Some(Token::Keyword(KW::SUPER)),
+                "this" => Some(Token::Keyword(KW::THIS)),
+                "and" => Some(Token::Keyword(KW::AND)),
+                "or" => Some(Token::Keyword(KW::OR)),
                 _ => None,
             }
         }

@@ -1,5 +1,5 @@
 use crate::tokenizer::tokenize::Tokenizer;
-use crate::tokenizer::tokens::{Keyword, Token};
+use crate::tokenizer::tokens::{Token, KW};
 
 use super::ast::*;
 
@@ -9,11 +9,6 @@ pub struct Parser {
     previous: Option<Token>,
     next: Option<Token>,
     current_index: usize,
-}
-
-pub enum Expectable {
-    Token(Token),
-    ASTNode(ASTNode),
 }
 
 impl Parser {
@@ -31,57 +26,21 @@ impl Parser {
         instance
     }
 
-    pub fn parse_sequence(&mut self, tokens: &[Expectable]) -> Result<Vec<Expectable>, String> {
-        let mut parsed = vec![];
-        for token in tokens {
-            self.consume_whitespace();
-            match token {
-                Expectable::Token(tok) => {
-                    if self.current.is_none() {
-                        return Err(format!("expected {} got Unexpected End of Input", tok));
-                    } else {
-                        if self.current.as_mut().unwrap() == tok {
-                            parsed.push(Expectable::Token(self.current.as_mut().unwrap().clone()));
-                        } else {
-                            return Err(format!(
-                                "Expected {} got {}",
-                                tok,
-                                self.current.as_mut().unwrap()
-                            ));
-                        }
-                    }
-                }
-                Expectable::ASTNode(node) => {
-                    if self.current.is_none() {
-                        return Err(format!("expected {} got Unexpected End of Input", node));
-                    }
-                    match node {
-                        _ => {
-                            let expr = self.parse_statement()?;
-                            parsed.push(Expectable::ASTNode(expr));
-                        }
-                    }
-                }
-            }
-            self.advance();
-        }
-        return Ok(parsed);
-    }
-
     pub fn advance(&mut self) {
         if self.is_at_end() {
             return;
         }
         self.current_index += 1;
         self.update_state();
+        self.consume_whitespace();
     }
 
     pub fn update_state(&mut self) {
         self.current = self.tokens.iter().nth(self.current_index).cloned();
         self.previous = self.tokens.iter().nth(self.current_index - 1).cloned();
         self.next = self.tokens.iter().nth(self.current_index + 1).cloned();
-        // dbg!(&self.current, &self.previous, &self.next);
     }
+
     pub fn consume_whitespace(&mut self) {
         while !self.is_at_end()
             && self.current.is_some()
@@ -92,82 +51,181 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<AST, String> {
-        let mut nodes = Vec::new();
-        while !self.is_at_end() {
-            self.consume_whitespace();
-            if self.current.is_none() {
+        let nodes = self.parse_program();
+        return Ok(AST { root: None, nodes });
+    }
+
+    pub fn parse_program(&mut self) -> Vec<ASTNode> {
+        let mut nodes: Vec<ASTNode> = vec![];
+        while !self.is_at_end() && self.current.clone().unwrap() != Token::EOF {
+            let stm = self.parse_statement();
+            if stm.is_some() {
+                nodes.push(ASTNode::Statement(stm.unwrap()));
+            } else {
+                let expr = self.parse_expression();
+                nodes.push(ASTNode::Expression(expr));
+            }
+        }
+        return nodes;
+    }
+
+    pub fn parse_expression(&mut self) -> Expression {
+        self.parse_expression_within_binding_power(0.0)
+    }
+
+    pub fn infix_binding_power(&self, op: &BinaryOperator) -> (f32, f32) {
+        match op {
+            BinaryOperator::Add => (2.1, 2.2),
+            BinaryOperator::Subtract => (2.1, 2.2),
+            BinaryOperator::Divide => (4.1, 4.2),
+            BinaryOperator::Multiply => (4.1, 4.2),
+            _ => (0.0, 0.0),
+        }
+    }
+
+    pub fn prefix_binding_power(&self, op: &UnaryOperator) -> ((), f32) {
+        match op {
+            UnaryOperator::Negate => ((), 5.1),
+            UnaryOperator::Not => ((), 5.1),
+            UnaryOperator::Plus => ((), 5.1),
+        }
+    }
+    pub fn parse_expression_within_binding_power(
+        &mut self,
+        minimum_binding_power: f32,
+    ) -> Expression {
+        let mut lhs = match self.current.as_ref().unwrap() {
+            Token::Minus | Token::Plus | Token::Not => {
+                let unary_op = match self.current.as_ref().unwrap() {
+                    Token::Minus => UnaryOperator::Negate,
+                    Token::Plus => UnaryOperator::Plus,
+                    Token::Not => UnaryOperator::Not,
+                    t => panic!("bad token: {:?}", t),
+                };
+                let ((), rbp) = self.prefix_binding_power(&unary_op);
+                self.advance();
+                let rhs = self.parse_expression_within_binding_power(rbp);
+                Expression::UnaryOperation(UnaryOperation {
+                    operator: unary_op,
+                    operand: Box::new(rhs),
+                })
+            }
+            Token::LeftParenthesis => {
+                self.advance();
+                let inner = self.parse_expression_within_binding_power(0.0);
+                Expression::Group(Box::new(inner))
+            }
+            _ => self.parse_atomic_expression(),
+        };
+        loop {
+            let op = match self.current.as_ref().unwrap() {
+                Token::EOF => break,
+                Token::RightParenthesis => {
+                    self.advance();
+                    break;
+                }
+                Token::Plus => BinaryOperator::Add,
+                Token::Minus => BinaryOperator::Subtract,
+                Token::Divide => BinaryOperator::Divide,
+                Token::Multiply => BinaryOperator::Multiply,
+                t => panic!("bad token: {:?}", t),
+            };
+            let (l_bp, r_bp) = self.infix_binding_power(&op);
+            if l_bp < minimum_binding_power {
                 break;
             }
-            match self.parse_statement() {
-                Ok(node) => nodes.push(node),
-                Err(e) => return Err(e),
-            }
-            self.consume_whitespace();
             self.advance();
+            let rhs = self.parse_expression_within_binding_power(r_bp);
+            lhs = Expression::BinaryOperation(BinaryOperation {
+                left: Box::new(lhs),
+                operator: op,
+                right: Box::new(rhs),
+            });
         }
-        Ok(AST { root: None, nodes })
+        lhs
     }
 
-    fn parse_statement(&mut self) -> Result<ASTNode, String> {
-        if self.current.is_none() {
-            unreachable!("should not be calling parse_statement on empty tokens");
-        }
-        match self.current.as_mut().unwrap().clone() {
-            Token::KEYWORD(keyword) => self.parse_keyword(&keyword),
-            Token::Number(num) => Ok(ASTNode::Expression(Expression::Literal(
-                Literal::NumberFloat(num.clone().parse::<f64>().unwrap()),
-            ))),
-            Token::StringLiteral(string) => Ok(ASTNode::Expression(Expression::Literal(
-                Literal::String(string.clone()),
-            ))),
-            Token::LeftParenthesis => {
-                self.advance(); // consume the left parenthesis
-                self.consume_whitespace();
-                let expr = self.parse_statement()?;
-                self.advance(); // move to the next token after the expression
-                self.consume_whitespace();
-                if self.current != Some(Token::RightParenthesis) {
-                    return Err("Expected right parenthesis".to_string());
-                }
-                Ok(ASTNode::Expression(Expression::Group(Box::new(expr))))
+    pub fn parse_atomic_expression(&mut self) -> Expression {
+        let expr = self.parse_literal();
+        if expr.is_none() {
+            let expr = self.parse_identifier();
+            if expr.is_none() {
+                panic!("Expected Atom found {:?}", self.current)
+            } else {
+                self.advance();
+                Expression::Identifier(expr.unwrap())
             }
-            Token::Not | Token::Minus => {
-                let current = self.current.clone();
-                self.advance(); // consume the NOT token
-                self.consume_whitespace();
-                let expr = self.parse_statement();
-                let operator = match current.unwrap().clone() {
-                    Token::Not => UnaryOperator::Not,
-                    Token::Minus => UnaryOperator::Negate,
-                    _ => return Err("Expected NOT or MINUS operator".to_string()),
-                };
-
-                if let Ok(ASTNode::Expression(exp)) = expr {
-                    Ok(ASTNode::Expression(Expression::UnaryOperation(
-                        UnaryOperation {
-                            operator,
-                            operand: Box::new(exp),
-                        },
-                    )))
-                } else {
-                    Err(format!("Expected expression after {}", operator))
-                }
-            }
-            (Token::EOF) => Ok(ASTNode::EOF),
-            _ => unimplemented!("Yet to implement"),
+        } else {
+            self.advance();
+            Expression::Literal(expr.unwrap())
         }
     }
 
-    fn parse_keyword(&self, keyword: &Keyword) -> Result<ASTNode, String> {
-        fn literal_expression(lit: Literal) -> Result<ASTNode, String> {
-            Ok(ASTNode::Expression(Expression::Literal(lit)))
+    pub fn parse_literal(&self) -> Option<Literal> {
+        match self.current.as_ref().unwrap().clone() {
+            Token::Number(num) => Some(Literal::NumberFloat(num.clone().parse::<f64>().unwrap())),
+            Token::StringLiteral(string) => Some(Literal::String(string.clone())),
+            Token::Keyword(KW::FALSE) => Some(Literal::Boolean(false)),
+            Token::Keyword(KW::TRUE) => Some(Literal::Boolean(true)),
+            Token::Keyword(KW::NIL) => Some(Literal::NIL),
+            _ => None,
         }
+    }
 
-        match keyword {
-            Keyword::FALSE => literal_expression(Literal::Boolean(false)),
-            Keyword::NIL => literal_expression(Literal::NIL),
-            Keyword::TRUE => literal_expression(Literal::Boolean(true)),
-            _ => unimplemented!("yet to implement other keywords"),
+    fn parse_identifier(&self) -> Option<String> {
+        match self.current.as_ref().unwrap().clone() {
+            Token::Identifier(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    fn parse_for_loop(&self) -> ForStatement {
+        unimplemented!()
+    }
+
+    fn parse_if_statement(&self) -> IfStatement {
+        unimplemented!()
+    }
+
+    fn parse_while_statement(&self) -> WhileStatement {
+        unimplemented!()
+    }
+
+    fn parse_return_statement(&self) -> ReturnStatement {
+        unimplemented!()
+    }
+
+    fn parse_variable_declaration(&self) -> VariableDeclaration {
+        unimplemented!()
+    }
+
+    fn parse_function_declaration(&self) -> FunctionDeclaration {
+        unimplemented!()
+    }
+
+    fn parse_block_statement(&self) -> Block {
+        unimplemented!()
+    }
+
+    fn parse_declaration(&self) -> Declaration {
+        match self.current.as_ref().unwrap().clone() {
+            Token::Keyword(KW::VAR) => Declaration::Variable(self.parse_variable_declaration()),
+            Token::Keyword(KW::FUN) => Declaration::Function(self.parse_function_declaration()),
+            _ => unreachable!("Not a declaration"),
+        }
+    }
+
+    fn parse_statement(&self) -> Option<Statement> {
+        match self.current.as_ref().unwrap().clone() {
+            Token::Keyword(KW::FOR) => Some(Statement::For(self.parse_for_loop())),
+            Token::Keyword(KW::IF) => Some(Statement::If(self.parse_if_statement())),
+            Token::Keyword(KW::WHILE) => Some(Statement::While(self.parse_while_statement())),
+            Token::Keyword(KW::RETURN) => Some(Statement::Return(self.parse_return_statement())),
+            Token::Keyword(KW::VAR) | Token::Keyword(KW::FUN) => {
+                Some(Statement::Declaration(self.parse_declaration()))
+            }
+            Token::LeftBrace => Some(Statement::Block(self.parse_block_statement())),
+            _ => None,
         }
     }
 
