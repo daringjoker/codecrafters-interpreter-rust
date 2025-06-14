@@ -23,6 +23,7 @@ impl Parser {
             current_index: 0,
         };
         instance.update_state();
+        eprintln!("current: {:?}", instance.current);
         instance
     }
 
@@ -33,6 +34,7 @@ impl Parser {
         self.current_index += 1;
         self.update_state();
         self.consume_whitespace();
+        eprintln!("current: {:?}", self.current);
     }
 
     pub fn update_state(&mut self) {
@@ -46,7 +48,8 @@ impl Parser {
             && self.current.is_some()
             && self.current.as_ref().unwrap().is_ignorable()
         {
-            self.advance();
+            self.current_index += 1;
+            self.update_state();
         }
     }
 
@@ -85,11 +88,12 @@ impl Parser {
 
     pub fn prefix_binding_power(&self, op: &UnaryOperator) -> ((), f32) {
         match op {
-            UnaryOperator::Negate => ((), 5.1),
-            UnaryOperator::Not => ((), 5.1),
-            UnaryOperator::Plus => ((), 5.1),
+            UnaryOperator::Negate => ((), 6.1),
+            UnaryOperator::Not => ((), 6.1),
+            UnaryOperator::Plus => ((), 6.1),
         }
     }
+
     pub fn parse_expression_within_binding_power(
         &mut self,
         minimum_binding_power: f32,
@@ -113,6 +117,7 @@ impl Parser {
             Token::LeftParenthesis => {
                 self.advance();
                 let inner = self.parse_expression_within_binding_power(0.0);
+                self.advance();
                 Expression::Group(Box::new(inner))
             }
             _ => self.parse_atomic_expression(),
@@ -121,7 +126,6 @@ impl Parser {
             let op = match self.current.as_ref().unwrap() {
                 Token::EOF => break,
                 Token::RightParenthesis => {
-                    self.advance();
                     break;
                 }
                 Token::Plus => BinaryOperator::Add,
