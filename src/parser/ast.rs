@@ -54,6 +54,12 @@ pub enum BinaryOperator {
     LessThan,
     GreaterThanOrEqual,
     LessThanOrEqual,
+    And,
+    Or,
+    Assignment,
+    Call,
+    Group,
+    Dot,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -309,6 +315,12 @@ impl Display for BinaryOperator {
             BinaryOperator::LessThan => write!(f, "<"),
             BinaryOperator::GreaterThanOrEqual => write!(f, ">="),
             BinaryOperator::LessThanOrEqual => write!(f, "<="),
+            BinaryOperator::And => write!(f, "and"),
+            BinaryOperator::Or => write!(f, "or"),
+            BinaryOperator::Assignment => write!(f, "="),
+            BinaryOperator::Call => write!(f, "call"),
+            BinaryOperator::Group => write!(f, "group"),
+            BinaryOperator::Dot => write!(f, "."),
         }
     }
 }

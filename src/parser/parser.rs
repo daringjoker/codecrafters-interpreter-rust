@@ -23,7 +23,6 @@ impl Parser {
             current_index: 0,
         };
         instance.update_state();
-        eprintln!("current: {:?}", instance.current);
         instance
     }
 
@@ -34,7 +33,6 @@ impl Parser {
         self.current_index += 1;
         self.update_state();
         self.consume_whitespace();
-        eprintln!("current: {:?}", self.current);
     }
 
     pub fn update_state(&mut self) {
@@ -78,19 +76,35 @@ impl Parser {
 
     pub fn infix_binding_power(&self, op: &BinaryOperator) -> (f32, f32) {
         match op {
-            BinaryOperator::Add => (2.1, 2.2),
-            BinaryOperator::Subtract => (2.1, 2.2),
-            BinaryOperator::Divide => (4.1, 4.2),
-            BinaryOperator::Multiply => (4.1, 4.2),
+            BinaryOperator::Assignment => (1.9, 1.2),
+
+            BinaryOperator::Or => (2.0, 2.0),
+
+            BinaryOperator::And => (3.0, 3.0),
+
+            BinaryOperator::Equal | BinaryOperator::NotEqual => (4.1, 4.2),
+
+            BinaryOperator::LessThan
+            | BinaryOperator::GreaterThan
+            | BinaryOperator::LessThanOrEqual
+            | BinaryOperator::GreaterThanOrEqual => (5.1, 5.2),
+
+            BinaryOperator::Add | BinaryOperator::Subtract => (6.1, 6.2),
+
+            BinaryOperator::Divide | BinaryOperator::Multiply => (7.1, 7.2),
+            //Unary not and minus
+            BinaryOperator::Call | BinaryOperator::Group => (9.1, 9.2),
+
+            BinaryOperator::Dot => (10.1, 10.2),
             _ => (0.0, 0.0),
         }
     }
 
     pub fn prefix_binding_power(&self, op: &UnaryOperator) -> ((), f32) {
         match op {
-            UnaryOperator::Negate => ((), 6.1),
-            UnaryOperator::Not => ((), 6.1),
-            UnaryOperator::Plus => ((), 6.1),
+            UnaryOperator::Negate => ((), 8.1),
+            UnaryOperator::Not => ((), 8.1),
+            UnaryOperator::Plus => ((), 8.1),
         }
     }
 
@@ -125,13 +139,22 @@ impl Parser {
         loop {
             let op = match self.current.as_ref().unwrap() {
                 Token::EOF => break,
-                Token::RightParenthesis => {
-                    break;
-                }
+                Token::RightParenthesis => break,
                 Token::Plus => BinaryOperator::Add,
                 Token::Minus => BinaryOperator::Subtract,
                 Token::Divide => BinaryOperator::Divide,
                 Token::Multiply => BinaryOperator::Multiply,
+                Token::And => BinaryOperator::And,
+                Token::Or => BinaryOperator::Or,
+                Token::GreaterThan => BinaryOperator::GreaterThan,
+                Token::GreaterThanOrEqual => BinaryOperator::GreaterThanOrEqual,
+                Token::LessThan => BinaryOperator::LessThan,
+                Token::LessThanOrEqual => BinaryOperator::LessThanOrEqual,
+                Token::Equals => BinaryOperator::Equal,
+                Token::NotEquals => BinaryOperator::NotEqual,
+                Token::Assignment => BinaryOperator::Assignment,
+                Token::LeftParenthesis => BinaryOperator::Call,
+                Token::Dot => BinaryOperator::Dot,
                 t => panic!("bad token: {:?}", t),
             };
             let (l_bp, r_bp) = self.infix_binding_power(&op);
