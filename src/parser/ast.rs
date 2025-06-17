@@ -9,7 +9,6 @@ pub enum ASTNode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    Group(Box<Expression>),
     Literal(Literal),
     Identifier(String),
     BinaryOperation(BinaryOperation),
@@ -58,7 +57,6 @@ pub enum BinaryOperator {
     Or,
     Assignment,
     Call,
-    Group,
     Dot,
 }
 
@@ -67,6 +65,7 @@ pub enum UnaryOperator {
     Negate,
     Not,
     Plus,
+    Group,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -157,7 +156,6 @@ impl Display for Expression {
             Expression::Identifier(id) => write!(f, "{}", id),
             Expression::BinaryOperation(op) => write!(f, "{}", op),
             Expression::UnaryOperation(op) => write!(f, "{}", op),
-            Expression::Group(node) => write!(f, "(group {})", node),
         }
     }
 }
@@ -319,7 +317,6 @@ impl Display for BinaryOperator {
             BinaryOperator::Or => write!(f, "or"),
             BinaryOperator::Assignment => write!(f, "="),
             BinaryOperator::Call => write!(f, "call"),
-            BinaryOperator::Group => write!(f, "group"),
             BinaryOperator::Dot => write!(f, "."),
         }
     }
@@ -331,6 +328,7 @@ impl Display for UnaryOperator {
             UnaryOperator::Negate => write!(f, "-"),
             UnaryOperator::Not => write!(f, "!"),
             UnaryOperator::Plus => write!(f, "+"),
+            UnaryOperator::Group => write!(f, "group"),
         }
     }
 }

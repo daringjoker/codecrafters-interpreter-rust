@@ -94,12 +94,33 @@ pub enum Token {
     Error(String, Position),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct PositionedToken {
+    pub tok: Token,
+    pub pos: Position,
+}
+
 impl Token {
     pub fn is_ignorable(&self) -> bool {
         matches!(self, Token::Whitespace(_) | Token::Comment(_))
     }
     pub fn is_error(&self) -> bool {
         matches!(self, Token::UnexpectedCharacter(_, _) | Token::Error(_, _))
+    }
+}
+
+impl PositionedToken {
+    pub fn is_ignorable(&self) -> bool {
+        self.tok.is_ignorable()
+    }
+    pub fn is_error(&self) -> bool {
+        self.tok.is_error()
+    }
+}
+
+impl Display for PositionedToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.tok)
     }
 }
 

@@ -1,14 +1,16 @@
-use crate::tokenizer::tokenize::Tokenizer;
-use crate::tokenizer::tokens::{Token, KW};
+use crate::tokenizer::tokenize::{Position, Tokenizer};
+use crate::tokenizer::tokens::{PositionedToken, Token, KW};
+use std::process::exit;
 
 use super::ast::*;
 
 pub struct Parser {
-    tokens: Vec<Token>,
-    current: Option<Token>,
-    previous: Option<Token>,
-    next: Option<Token>,
+    tokens: Vec<PositionedToken>,
+    current: Token,
+    previous: Token,
+    next: Token,
     current_index: usize,
+    pos: Position,
 }
 
 impl Parser {
@@ -17,10 +19,11 @@ impl Parser {
         let tokens = tokenizer.tokenize();
         let mut instance = Parser {
             tokens: tokens,
-            current: None,
-            previous: None,
-            next: None,
+            current: Token::EOF,
+            previous: Token::EOF,
+            next: Token::EOF,
             current_index: 0,
+            pos: Position { line: 0, column: 0 },
         };
         instance.update_state();
         instance
@@ -36,19 +39,56 @@ impl Parser {
     }
 
     pub fn update_state(&mut self) {
-        self.current = self.tokens.iter().nth(self.current_index).cloned();
-        self.previous = self.tokens.iter().nth(self.current_index - 1).cloned();
-        self.next = self.tokens.iter().nth(self.current_index + 1).cloned();
+        let INVALID_POS_TOKEN = PositionedToken {
+            tok: Token::EOF,
+            pos: Position { line: 0, column: 0 },
+        };
+
+        let current_pos_token = self
+            .tokens
+            .iter()
+            .nth(self.current_index)
+            .unwrap_or(&INVALID_POS_TOKEN)
+            .clone();
+
+        self.current = current_pos_token.tok;
+
+        self.pos = current_pos_token.pos;
+
+        self.previous = self
+            .tokens
+            .iter()
+            .nth(self.current_index - 1)
+            .unwrap_or(&INVALID_POS_TOKEN)
+            .clone()
+            .tok;
+
+        self.next = self
+            .tokens
+            .iter()
+            .nth(self.current_index + 1)
+            .unwrap_or(&INVALID_POS_TOKEN)
+            .clone()
+            .tok;
     }
 
     pub fn consume_whitespace(&mut self) {
-        while !self.is_at_end()
-            && self.current.is_some()
-            && self.current.as_ref().unwrap().is_ignorable()
-        {
+        while !self.is_at_end() && self.current.is_ignorable() {
             self.current_index += 1;
             self.update_state();
         }
+    }
+
+    pub fn exit_with_msg(&self, msg: &String) -> ! {
+        eprintln!("{}", msg);
+        exit(65)
+    }
+
+    pub fn expectation_failure(&self, expected: &str) -> ! {
+        self.exit_with_msg(&format!(
+            "[line {}] Error at '{}': Expect {}.",
+            &self.pos.line, &self.current, expected
+        ))
     }
 
     pub fn parse(&mut self) -> Result<AST, String> {
@@ -58,7 +98,7 @@ impl Parser {
 
     pub fn parse_program(&mut self) -> Vec<ASTNode> {
         let mut nodes: Vec<ASTNode> = vec![];
-        while !self.is_at_end() && self.current.clone().unwrap() != Token::EOF {
+        while !self.is_at_end() && self.current != Token::EOF {
             let stm = self.parse_statement();
             if stm.is_some() {
                 nodes.push(ASTNode::Statement(stm.unwrap()));
@@ -93,7 +133,7 @@ impl Parser {
 
             BinaryOperator::Divide | BinaryOperator::Multiply => (7.1, 7.2),
             //Unary not and minus
-            BinaryOperator::Call | BinaryOperator::Group => (9.1, 9.2),
+            BinaryOperator::Call => (9.1, 9.2),
 
             BinaryOperator::Dot => (10.1, 10.2),
             _ => (0.0, 0.0),
@@ -105,6 +145,7 @@ impl Parser {
             UnaryOperator::Negate => ((), 8.1),
             UnaryOperator::Not => ((), 8.1),
             UnaryOperator::Plus => ((), 8.1),
+            UnaryOperator::Group => ((), 9.1),
         }
     }
 
@@ -112,13 +153,13 @@ impl Parser {
         &mut self,
         minimum_binding_power: f32,
     ) -> Expression {
-        let mut lhs = match self.current.as_ref().unwrap() {
+        let mut lhs = match &self.current {
             Token::Minus | Token::Plus | Token::Not => {
-                let unary_op = match self.current.as_ref().unwrap() {
+                let unary_op = match &self.current {
                     Token::Minus => UnaryOperator::Negate,
                     Token::Plus => UnaryOperator::Plus,
                     Token::Not => UnaryOperator::Not,
-                    t => panic!("bad token: {:?}", t),
+                    _ => unreachable!("Impossible to get here since operator was already matched"),
                 };
                 let ((), rbp) = self.prefix_binding_power(&unary_op);
                 self.advance();
@@ -131,13 +172,19 @@ impl Parser {
             Token::LeftParenthesis => {
                 self.advance();
                 let inner = self.parse_expression_within_binding_power(0.0);
+                if self.current != Token::RightParenthesis {
+                    self.expectation_failure("')'")
+                }
                 self.advance();
-                Expression::Group(Box::new(inner))
+                Expression::UnaryOperation(UnaryOperation {
+                    operator: UnaryOperator::Group,
+                    operand: Box::new(inner),
+                })
             }
             _ => self.parse_atomic_expression(),
         };
         loop {
-            let op = match self.current.as_ref().unwrap() {
+            let op = match &self.current {
                 Token::EOF => break,
                 Token::RightParenthesis => break,
                 Token::Plus => BinaryOperator::Add,
@@ -155,7 +202,7 @@ impl Parser {
                 Token::Assignment => BinaryOperator::Assignment,
                 Token::LeftParenthesis => BinaryOperator::Call,
                 Token::Dot => BinaryOperator::Dot,
-                t => panic!("bad token: {:?}", t),
+                _ => self.expectation_failure("Binary Operator"),
             };
             let (l_bp, r_bp) = self.infix_binding_power(&op);
             if l_bp < minimum_binding_power {
@@ -177,7 +224,7 @@ impl Parser {
         if expr.is_none() {
             let expr = self.parse_identifier();
             if expr.is_none() {
-                panic!("Expected Atom found {:?}", self.current)
+                self.expectation_failure("Atomic Expression")
             } else {
                 self.advance();
                 Expression::Identifier(expr.unwrap())
@@ -189,7 +236,7 @@ impl Parser {
     }
 
     pub fn parse_literal(&self) -> Option<Literal> {
-        match self.current.as_ref().unwrap().clone() {
+        match &self.current {
             Token::Number(num) => Some(Literal::NumberFloat(num.clone().parse::<f64>().unwrap())),
             Token::StringLiteral(string) => Some(Literal::String(string.clone())),
             Token::Keyword(KW::FALSE) => Some(Literal::Boolean(false)),
@@ -200,8 +247,8 @@ impl Parser {
     }
 
     fn parse_identifier(&self) -> Option<String> {
-        match self.current.as_ref().unwrap().clone() {
-            Token::Identifier(x) => Some(x),
+        match &self.current {
+            Token::Identifier(x) => Some(x.clone()),
             _ => None,
         }
     }
@@ -235,7 +282,7 @@ impl Parser {
     }
 
     fn parse_declaration(&self) -> Declaration {
-        match self.current.as_ref().unwrap().clone() {
+        match &self.current {
             Token::Keyword(KW::VAR) => Declaration::Variable(self.parse_variable_declaration()),
             Token::Keyword(KW::FUN) => Declaration::Function(self.parse_function_declaration()),
             _ => unreachable!("Not a declaration"),
@@ -243,7 +290,7 @@ impl Parser {
     }
 
     fn parse_statement(&self) -> Option<Statement> {
-        match self.current.as_ref().unwrap().clone() {
+        match &self.current {
             Token::Keyword(KW::FOR) => Some(Statement::For(self.parse_for_loop())),
             Token::Keyword(KW::IF) => Some(Statement::If(self.parse_if_statement())),
             Token::Keyword(KW::WHILE) => Some(Statement::While(self.parse_while_statement())),

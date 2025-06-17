@@ -1,4 +1,4 @@
-use super::tokens::{Token, KW};
+use super::tokens::{PositionedToken, Token, KW};
 use std::cmp::min;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,7 +79,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
+    pub fn tokenize(&mut self) -> Vec<PositionedToken> {
         let mut tokens = Vec::new();
         fn single_character_token(c: char) -> Option<Token> {
             match c {
@@ -152,6 +152,7 @@ impl Tokenizer {
             match c {
                 '0'..='9' => {
                     let mut current_word = String::new();
+                    let current_pos = self.position.clone();
                     current_word.push(c);
                     self.advance();
                     let mut found_dot = false;
@@ -167,10 +168,14 @@ impl Tokenizer {
                             break;
                         }
                     }
-                    tokens.push(Token::Number(current_word.clone()));
+                    tokens.push(PositionedToken {
+                        tok: Token::Number(current_word),
+                        pos: current_pos,
+                    });
                 }
                 'a'..='z' | 'A'..='Z' | '_' => {
                     let mut current_word = String::new();
+                    let current_pos = self.position.clone();
                     current_word.push(c);
                     self.advance();
                     while let Some(next_char) = self.char {
@@ -182,13 +187,20 @@ impl Tokenizer {
                         }
                     }
                     if let Some(keyword_token) = keyword_from(&current_word) {
-                        tokens.push(keyword_token);
+                        tokens.push(PositionedToken {
+                            tok: keyword_token,
+                            pos: current_pos,
+                        })
                     } else {
-                        tokens.push(Token::Identifier(current_word.clone()));
+                        tokens.push(PositionedToken {
+                            tok: Token::Identifier(current_word.clone()),
+                            pos: current_pos,
+                        });
                     }
                 }
                 '\'' => {
                     let mut current_word = String::new();
+                    let current_pos = self.position.clone();
                     let mut terminated = false;
                     self.advance(); // Skip the opening quote
                     while let Some(next_char) = self.char {
@@ -203,16 +215,23 @@ impl Tokenizer {
                     }
                     if !terminated {
                         self.healthy = false; // Mark as unhealthy if not terminated
-                        tokens.push(Token::Error(
-                            "Unterminated string.".to_string(),
-                            self.position.clone(),
-                        ));
+                        tokens.push(PositionedToken {
+                            tok: Token::Error(
+                                "Unterminated string.".to_string(),
+                                self.position.clone(),
+                            ),
+                            pos: current_pos,
+                        });
                     } else {
-                        tokens.push(Token::StringLiteral(current_word.clone()));
+                        tokens.push(PositionedToken {
+                            tok: Token::StringLiteral(current_word.clone()),
+                            pos: current_pos,
+                        });
                     }
                 }
                 '"' => {
                     let mut current_word = String::new();
+                    let current_pos = self.position.clone();
                     self.advance(); // Skip the opening quote
                     let mut terminated = false;
                     while let Some(next_char) = self.char {
@@ -227,16 +246,23 @@ impl Tokenizer {
                     }
                     if !terminated {
                         self.healthy = false; // Mark as unhealthy if not terminated
-                        tokens.push(Token::Error(
-                            "Unterminated string.".to_string(),
-                            self.position.clone(),
-                        ));
+                        tokens.push(PositionedToken {
+                            tok: Token::Error(
+                                "Unterminated string.".to_string(),
+                                self.position.clone(),
+                            ),
+                            pos: current_pos,
+                        });
                     } else {
-                        tokens.push(Token::StringLiteral(current_word.clone()));
+                        tokens.push(PositionedToken {
+                            tok: Token::StringLiteral(current_word.clone()),
+                            pos: current_pos,
+                        });
                     }
                 }
                 '`' => {
                     let mut current_word = String::new();
+                    let current_pos = self.position.clone();
                     self.advance(); // Skip the opening backtick
                     while let Some(next_char) = self.char {
                         if next_char == '`' {
@@ -247,11 +273,15 @@ impl Tokenizer {
                             self.advance();
                         }
                     }
-                    tokens.push(Token::InterpolatedString(current_word.clone()));
+                    tokens.push(PositionedToken {
+                        tok: Token::InterpolatedString(current_word.clone()),
+                        pos: current_pos,
+                    });
                     current_word.clear();
                 }
                 _ if c.is_whitespace() => {
                     let mut whitespace = String::new();
+                    let current_pos = self.position.clone();
                     while let Some(next_char) = self.char {
                         if next_char.is_whitespace() {
                             whitespace.push(next_char);
@@ -260,9 +290,13 @@ impl Tokenizer {
                             break;
                         }
                     }
-                    tokens.push(Token::Whitespace(whitespace));
+                    tokens.push(PositionedToken {
+                        tok: Token::Whitespace(whitespace),
+                        pos: current_pos,
+                    });
                 }
                 _ => {
+                    let current_pos = self.position.clone();
                     if let Some(two_chars) = self.seek(Some(2), None) {
                         if let Some(token) = double_character_token(two_chars) {
                             match token {
@@ -278,19 +312,31 @@ impl Tokenizer {
                                         comment.push(next_char);
                                         self.advance();
                                     }
-                                    tokens.push(Token::Comment(comment));
+                                    tokens.push(PositionedToken {
+                                        tok: Token::Comment(comment),
+                                        pos: current_pos,
+                                    });
                                 }
                                 _ => {
-                                    tokens.push(token);
+                                    tokens.push(PositionedToken {
+                                        tok: token,
+                                        pos: current_pos,
+                                    });
                                     self.advance(); // Skip the next character as well
                                     self.advance();
                                 }
                             }
                         } else if let Some(token) = single_character_token(c) {
-                            tokens.push(token);
+                            tokens.push(PositionedToken {
+                                tok: token,
+                                pos: current_pos,
+                            });
                             self.advance();
                         } else {
-                            tokens.push(Token::UnexpectedCharacter(c, self.position.clone()));
+                            tokens.push(PositionedToken {
+                                tok: Token::UnexpectedCharacter(c, self.position.clone()),
+                                pos: self.position.clone(),
+                            });
                             self.advance();
                             self.healthy = false; // Mark as unhealthy on unexpected character
                         }
@@ -299,7 +345,10 @@ impl Tokenizer {
             }
         }
 
-        tokens.push(Token::EOF); // End of file token
+        tokens.push(PositionedToken {
+            tok: Token::EOF,
+            pos: self.position.clone(),
+        });
         tokens
     }
 }
