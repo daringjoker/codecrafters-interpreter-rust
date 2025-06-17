@@ -62,7 +62,7 @@ fn main() {
             let tree = parser.parse();
             tree.nodes
                 .iter()
-                .for_each(|n| n.evaluate(&VirtualMachine {}));
+                .for_each(|n| println!("{}", n.evaluate(&VirtualMachine {})));
         }
         "tokenize-string" => {
             if args.len() < 3 {
