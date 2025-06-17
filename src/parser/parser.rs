@@ -91,9 +91,9 @@ impl Parser {
         ))
     }
 
-    pub fn parse(&mut self) -> Result<AST, String> {
+    pub fn parse(&mut self) -> AST {
         let nodes = self.parse_program();
-        return Ok(AST { root: None, nodes });
+        return AST { root: None, nodes };
     }
 
     pub fn parse_program(&mut self) -> Vec<ASTNode> {

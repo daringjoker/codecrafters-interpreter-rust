@@ -2,9 +2,11 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
+mod evaluator;
 mod parser;
 mod tokenizer;
 
+use evaluator::evaluate::{Eval, VirtualMachine};
 use parser::parser::Parser;
 use tokenizer::tokenize::Tokenizer;
 
@@ -48,14 +50,19 @@ fn main() {
                 String::new()
             });
             let mut parser = Parser::new(file_contents);
-            match parser.parse() {
-                Ok(tree) => {
-                    writeln!(io::stdout(), "{}", tree).unwrap();
-                }
-                Err(msg) => {
-                    panic!("{}", msg);
-                }
-            }
+            let tree = parser.parse();
+            writeln!(io::stdout(), "{}", tree).unwrap();
+        }
+        "evaluate" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                String::new()
+            });
+            let mut parser = Parser::new(file_contents);
+            let tree = parser.parse();
+            tree.nodes
+                .iter()
+                .for_each(|n| n.evaluate(&VirtualMachine {}));
         }
         "tokenize-string" => {
             if args.len() < 3 {
