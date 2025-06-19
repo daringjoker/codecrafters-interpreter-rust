@@ -91,6 +91,26 @@ impl Eval for BinaryOperation {
                 (Value::Int(x), Value::Int(y)) => Value::Int(x / y),
                 (_, _) => unimplemented!("No valid symantic meaning for this"),
             },
+            BinaryOperator::LessThan => match (lhs, rhs) {
+                (Value::Number(x), Value::Number(y)) => Value::Boolean(x < y),
+                (Value::Int(x), Value::Int(y)) => Value::Boolean(x < y),
+                (_, _) => unimplemented!("No valid symantic meaning for this"),
+            },
+            BinaryOperator::LessThanOrEqual => match (lhs, rhs) {
+                (Value::Number(x), Value::Number(y)) => Value::Boolean(x <= y),
+                (Value::Int(x), Value::Int(y)) => Value::Boolean(x <= y),
+                (_, _) => unimplemented!("No valid symantic meaning for this"),
+            },
+            BinaryOperator::GreaterThan => match (lhs, rhs) {
+                (Value::Number(x), Value::Number(y)) => Value::Boolean(x > y),
+                (Value::Int(x), Value::Int(y)) => Value::Boolean(x > y),
+                (_, _) => unimplemented!("No valid symantic meaning for this"),
+            },
+            BinaryOperator::GreaterThanOrEqual => match (lhs, rhs) {
+                (Value::Number(x), Value::Number(y)) => Value::Boolean(x >= y),
+                (Value::Int(x), Value::Int(y)) => Value::Boolean(x >= y),
+                (_, _) => unimplemented!("No valid symantic meaning for this"),
+            },
             BinaryOperator::Equal => Value::Boolean(lhs == rhs),
             BinaryOperator::NotEqual => Value::Boolean(lhs != rhs),
             _ => unimplemented!("Binary Operator {} is not implemented!", self.operator),
