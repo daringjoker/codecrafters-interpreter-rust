@@ -176,6 +176,16 @@ impl Eval for BinaryOperation {
 
             BinaryOperator::Equal => Value::Boolean(lhs.clone() == rhs.clone()),
             BinaryOperator::NotEqual => Value::Boolean(lhs.clone() != rhs.clone()),
+            BinaryOperator::Assignment => {
+                if let Expression::Identifier(id) = &self.left.as_ref() {
+                    vm.root_scope
+                        .borrow_mut()
+                        .update_variable(id.as_str(), rhs.clone());
+                } else {
+                    runtime_error("Left-hand side of assignment must be an identifier");
+                }
+                return rhs;
+            }
             _ => unimplemented!("Binary Operator {} is not implemented!", self.operator),
         };
 

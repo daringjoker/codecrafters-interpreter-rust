@@ -30,6 +30,16 @@ impl Scope {
         self.variables.insert(name, value.unwrap_or(Value::Nil));
     }
 
+    pub fn update_variable(&mut self, name: &str, value: Value) {
+        if let Some(var) = self.variables.get_mut(name) {
+            *var = value;
+        } else if let Some(parent) = &self.parent_scope {
+            parent.borrow_mut().update_variable(name, value);
+        } else {
+            runtime_error(&format!("Variable '{}' not defined", name));
+        }
+    }
+
     pub fn get_variable_value(&self, name: &str) -> Option<Value> {
         let value = self.variables.get(name).cloned().or_else(|| {
             if let Some(parent) = &self.parent_scope {
