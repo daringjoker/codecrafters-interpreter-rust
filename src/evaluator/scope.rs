@@ -27,7 +27,7 @@ impl Scope {
     }
 
     pub fn define_variable(&mut self, name: String, value: Option<Value>) {
-        self.variables.insert(name, value.unwrap_or(Value::Nothing));
+        self.variables.insert(name, value.unwrap_or(Value::Nil));
     }
 
     pub fn get_variable_value(&self, name: &str) -> Option<Value> {
@@ -38,9 +38,6 @@ impl Scope {
                 None
             }
         });
-        if let Some(Value::Nothing) = value {
-            runtime_error(&format!("Variable {} used before initialization", name));
-        }
         value
     }
 }
