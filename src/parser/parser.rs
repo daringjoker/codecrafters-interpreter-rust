@@ -109,6 +109,9 @@ impl Parser {
         while !self.is_at_end() && self.current != Token::EOF {
             let stm = self.parse_statement();
             if stm.is_some() {
+                if self.current == Token::Semicolon {
+                    self.advance();
+                }
                 nodes.push(ASTNode::Statement(stm.unwrap()));
             } else {
                 let expr = self.parse_expression();
