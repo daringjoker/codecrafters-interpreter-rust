@@ -1,14 +1,25 @@
+use super::scope::Scope;
 use crate::parser::ast::*;
+use std::cell::RefCell;
 use std::fmt::Display;
 use std::process::exit;
+use std::rc::Rc;
 
 pub trait Eval {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value;
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value;
 }
 
-pub struct VirtualMachine {}
+pub struct VirtualMachine {
+    root_scope: Rc<RefCell<Scope>>,
+}
 
-struct Scope {}
+impl VirtualMachine {
+    pub fn new() -> Self {
+        VirtualMachine {
+            root_scope: Rc::new(RefCell::new(Scope::new())),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
@@ -40,7 +51,7 @@ impl Display for Value {
 }
 
 impl Eval for ASTNode {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
         match &self {
             ASTNode::Expression(ex) => ex.evaluate(vm),
             ASTNode::Statement(st) => st.evaluate(vm),
@@ -49,7 +60,7 @@ impl Eval for ASTNode {
     }
 }
 impl Eval for Statement {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
         match &self {
             Statement::Expression(exp) => {
                 let _expr = exp.evaluate(vm);
@@ -61,24 +72,42 @@ impl Eval for Statement {
                 println!("{}", expr);
                 return Value::Nothing;
             }
+            Statement::Declaration(Declaration::Variable(var)) => {
+                let value = if let Some(expr) = &var.value {
+                    Some(expr.evaluate(vm))
+                } else {
+                    None
+                };
+                vm.root_scope
+                    .borrow_mut()
+                    .define_variable(var.name.clone(), value);
+                return Value::Nothing;
+            }
             _ => unimplemented!(),
         }
     }
 }
 
 impl Eval for Expression {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
         match &self {
             Expression::Literal(lit) => lit.evaluate(vm),
             Expression::BinaryOperation(op) => op.evaluate(vm),
             Expression::UnaryOperation(op) => op.evaluate(vm),
+            Expression::Identifier(id) => vm
+                .root_scope
+                .as_ref()
+                .borrow()
+                .get_variable_value(id)
+                .unwrap_or_else(|| runtime_error(&format!("Variable {} not found", id)))
+                .clone(),
             _ => unimplemented!(),
         }
     }
 }
 
 impl Eval for Literal {
-    fn evaluate(&self, _vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, _vm: &mut VirtualMachine) -> Value {
         match &self {
             Literal::NumberFloat(n) => Value::Number(*n),
             Literal::NumberInteger(i) => Value::Int(*i),
@@ -90,7 +119,7 @@ impl Eval for Literal {
 }
 
 impl Eval for BinaryOperation {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
         let lhs = self.left.evaluate(vm);
         let rhs = self.right.evaluate(vm);
         let retval = match self.operator {
@@ -159,7 +188,7 @@ impl Eval for BinaryOperation {
     }
 }
 impl Eval for UnaryOperation {
-    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
         let lhs = self.operand.evaluate(vm);
         let retval = match (self.operator.clone(), lhs.clone()) {
             (UnaryOperator::Negate, Value::Number(n)) => Value::Number(-n),

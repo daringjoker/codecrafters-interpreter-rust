@@ -60,9 +60,10 @@ fn main() {
             });
             let mut parser = Parser::new(file_contents);
             let tree = parser.parse();
+            let mut vm = VirtualMachine::new();
             tree.nodes
                 .iter()
-                .map(|n| n.evaluate(&VirtualMachine {}))
+                .map(|n| n.evaluate(&mut vm))
                 .filter(|n| !n.is_nothing())
                 .for_each(|n| println!("{}", n));
         }

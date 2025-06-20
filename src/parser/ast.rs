@@ -111,8 +111,8 @@ pub struct ReturnStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableDeclaration {
-    name: String,
-    value: Option<Expression>,
+    pub name: String,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

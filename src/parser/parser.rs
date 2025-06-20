@@ -287,8 +287,23 @@ impl Parser {
         unimplemented!()
     }
 
-    fn parse_variable_declaration(&self) -> VariableDeclaration {
-        unimplemented!()
+    fn parse_variable_declaration(&mut self) -> VariableDeclaration {
+        self.expect_next_token_to_be(Token::Keyword(KW::VAR));
+        let identifier = self.parse_identifier().expect("Expected variable name");
+        self.advance();
+        if self.current == Token::Assignment {
+            self.advance();
+            let initializer = self.parse_expression();
+            VariableDeclaration {
+                name: identifier,
+                value: Some(initializer),
+            }
+        } else {
+            VariableDeclaration {
+                name: identifier,
+                value: None,
+            }
+        }
     }
 
     fn parse_function_declaration(&self) -> FunctionDeclaration {
@@ -299,7 +314,7 @@ impl Parser {
         unimplemented!()
     }
 
-    fn parse_declaration(&self) -> Declaration {
+    fn parse_declaration(&mut self) -> Declaration {
         match &self.current {
             Token::Keyword(KW::VAR) => Declaration::Variable(self.parse_variable_declaration()),
             Token::Keyword(KW::FUN) => Declaration::Function(self.parse_function_declaration()),
