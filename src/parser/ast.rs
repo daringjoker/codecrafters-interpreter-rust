@@ -22,6 +22,7 @@ pub enum Statement {
     For(ForStatement),
     Return(ReturnStatement),
     Declaration(Declaration),
+    Print(PrintStatement),
     Block(Block),
 }
 
@@ -131,6 +132,11 @@ pub struct AST {
     pub nodes: Vec<ASTNode>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrintStatement {
+    pub value: Expression,
+}
+
 impl Display for AST {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for node in &self.nodes {
@@ -169,6 +175,7 @@ impl Display for Statement {
             Statement::Return(stmt) => write!(f, "{}", stmt),
             Statement::Declaration(stmt) => write!(f, "{}", stmt),
             Statement::Block(stmt) => write!(f, "{}", stmt),
+            Statement::Print(stmt) => write!(f, "{}", stmt),
         }
     }
 }
@@ -296,6 +303,12 @@ impl Display for Block {
             writeln!(f, "  {}", node)?;
         }
         write!(f, "}}")
+    }
+}
+
+impl Display for PrintStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "print {}", self.value)
     }
 }
 

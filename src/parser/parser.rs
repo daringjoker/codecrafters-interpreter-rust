@@ -26,6 +26,7 @@ impl Parser {
             pos: Position { line: 0, column: 0 },
         };
         instance.update_state();
+        instance.consume_whitespace();
         instance
     }
 
@@ -39,7 +40,7 @@ impl Parser {
     }
 
     pub fn update_state(&mut self) {
-        let INVALID_POS_TOKEN = PositionedToken {
+        let invalid_pos_token = PositionedToken {
             tok: Token::EOF,
             pos: Position { line: 0, column: 0 },
         };
@@ -48,7 +49,7 @@ impl Parser {
             .tokens
             .iter()
             .nth(self.current_index)
-            .unwrap_or(&INVALID_POS_TOKEN)
+            .unwrap_or(&invalid_pos_token)
             .clone();
 
         self.current = current_pos_token.tok;
@@ -59,7 +60,7 @@ impl Parser {
             .tokens
             .iter()
             .nth(self.current_index - 1)
-            .unwrap_or(&INVALID_POS_TOKEN)
+            .unwrap_or(&invalid_pos_token)
             .clone()
             .tok;
 
@@ -67,7 +68,7 @@ impl Parser {
             .tokens
             .iter()
             .nth(self.current_index + 1)
-            .unwrap_or(&INVALID_POS_TOKEN)
+            .unwrap_or(&invalid_pos_token)
             .clone()
             .tok;
     }
@@ -77,6 +78,13 @@ impl Parser {
             self.current_index += 1;
             self.update_state();
         }
+    }
+
+    pub fn expect_next_token_to_be(&mut self, tok: Token) {
+        if self.current != tok {
+            self.expectation_failure(&format!("{:?}", tok))
+        }
+        self.advance();
     }
 
     pub fn exit_with_msg(&self, msg: &String) -> ! {
@@ -187,6 +195,10 @@ impl Parser {
             let op = match &self.current {
                 Token::EOF => break,
                 Token::RightParenthesis => break,
+                Token::Semicolon => {
+                    self.advance();
+                    break;
+                }
                 Token::Plus => BinaryOperator::Add,
                 Token::Minus => BinaryOperator::Subtract,
                 Token::Divide => BinaryOperator::Divide,
@@ -289,7 +301,13 @@ impl Parser {
         }
     }
 
-    fn parse_statement(&self) -> Option<Statement> {
+    fn parse_print_statement(&mut self) -> PrintStatement {
+        self.expect_next_token_to_be(Token::Keyword(KW::PRINT));
+        let expr = self.parse_expression();
+        PrintStatement { value: expr }
+    }
+
+    fn parse_statement(&mut self) -> Option<Statement> {
         match &self.current {
             Token::Keyword(KW::FOR) => Some(Statement::For(self.parse_for_loop())),
             Token::Keyword(KW::IF) => Some(Statement::If(self.parse_if_statement())),
@@ -299,6 +317,7 @@ impl Parser {
                 Some(Statement::Declaration(self.parse_declaration()))
             }
             Token::LeftBrace => Some(Statement::Block(self.parse_block_statement())),
+            Token::Keyword(KW::PRINT) => Some(Statement::Print(self.parse_print_statement())),
             _ => None,
         }
     }

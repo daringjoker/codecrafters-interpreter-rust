@@ -53,7 +53,7 @@ fn main() {
             let tree = parser.parse();
             writeln!(io::stdout(), "{}", tree).unwrap();
         }
-        "evaluate" => {
+        "evaluate" | "run" => {
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
                 String::new()
@@ -62,7 +62,9 @@ fn main() {
             let tree = parser.parse();
             tree.nodes
                 .iter()
-                .for_each(|n| println!("{}", n.evaluate(&VirtualMachine {})));
+                .map(|n| n.evaluate(&VirtualMachine {}))
+                .filter(|n| !n.is_nothing())
+                .for_each(|n| println!("{}", n));
         }
         "tokenize-string" => {
             if args.len() < 3 {

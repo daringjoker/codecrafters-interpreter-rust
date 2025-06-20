@@ -16,7 +16,14 @@ pub enum Value {
     Int(i64),
     String(String),
     Boolean(bool),
+    Nothing,
     Nil,
+}
+
+impl Value {
+    pub fn is_nothing(&self) -> bool {
+        *self == Value::Nothing
+    }
 }
 
 impl Display for Value {
@@ -27,6 +34,7 @@ impl Display for Value {
             Value::String(n) => write!(f, "{}", n),
             Value::Boolean(n) => write!(f, "{}", n),
             Value::Nil => write!(f, "nil"),
+            Value::Nothing => write!(f, "Nothing"),
         }
     }
 }
@@ -35,7 +43,19 @@ impl Eval for ASTNode {
     fn evaluate(&self, vm: &VirtualMachine) -> Value {
         match &self {
             ASTNode::Expression(ex) => ex.evaluate(vm),
-            ASTNode::Statement(_st) => todo!("implement the statement using vm"),
+            ASTNode::Statement(st) => st.evaluate(vm),
+            _ => unimplemented!(),
+        }
+    }
+}
+impl Eval for Statement {
+    fn evaluate(&self, vm: &VirtualMachine) -> Value {
+        match &self {
+            Statement::Print(pr) => {
+                let expr = pr.value.evaluate(vm);
+                println!("{}", expr);
+                return Value::Nothing;
+            }
             _ => unimplemented!(),
         }
     }
@@ -147,6 +167,7 @@ impl Eval for UnaryOperation {
             (UnaryOperator::Not, Value::String(n)) => Value::Boolean(n == ""),
             (UnaryOperator::Not, Value::Nil) => Value::Boolean(true),
             (UnaryOperator::Group, l) => l,
+            (_, _) => runtime_error("undefined behaviour"),
         };
         eprintln!(
             "{} {} == {} {} = {}",
