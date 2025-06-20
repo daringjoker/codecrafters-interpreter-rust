@@ -112,7 +112,12 @@ impl Parser {
                 nodes.push(ASTNode::Statement(stm.unwrap()));
             } else {
                 let expr = self.parse_expression();
-                nodes.push(ASTNode::Expression(expr));
+                if self.current == Token::Semicolon {
+                    self.advance();
+                    nodes.push(ASTNode::Statement(Statement::Expression(expr)));
+                } else {
+                    nodes.push(ASTNode::Expression(expr));
+                }
             }
         }
         return nodes;
@@ -120,9 +125,6 @@ impl Parser {
 
     pub fn parse_expression(&mut self) -> Expression {
         let expr = self.parse_expression_within_binding_power(0.0);
-        if self.current == Token::Semicolon {
-            self.advance();
-        };
         return expr;
     }
 

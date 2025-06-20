@@ -51,8 +51,13 @@ impl Eval for ASTNode {
 impl Eval for Statement {
     fn evaluate(&self, vm: &VirtualMachine) -> Value {
         match &self {
+            Statement::Expression(exp) => {
+                let _expr = exp.evaluate(vm);
+                return Value::Nothing;
+            }
             Statement::Print(pr) => {
                 let expr = pr.value.evaluate(vm);
+                eprintln!("{} =>{}", pr, expr);
                 println!("{}", expr);
                 return Value::Nothing;
             }

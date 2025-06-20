@@ -17,6 +17,7 @@ pub enum Expression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
+    Expression(Expression),
     If(IfStatement),
     While(WhileStatement),
     For(ForStatement),
@@ -176,6 +177,7 @@ impl Display for Statement {
             Statement::Declaration(stmt) => write!(f, "{}", stmt),
             Statement::Block(stmt) => write!(f, "{}", stmt),
             Statement::Print(stmt) => write!(f, "{}", stmt),
+            Statement::Expression(exp) => write!(f, "{};", exp),
         }
     }
 }
