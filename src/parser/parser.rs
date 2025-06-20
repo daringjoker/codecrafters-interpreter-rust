@@ -119,7 +119,11 @@ impl Parser {
     }
 
     pub fn parse_expression(&mut self) -> Expression {
-        self.parse_expression_within_binding_power(0.0)
+        let expr = self.parse_expression_within_binding_power(0.0);
+        if self.current == Token::Semicolon {
+            self.advance();
+        };
+        return expr;
     }
 
     pub fn infix_binding_power(&self, op: &BinaryOperator) -> (f32, f32) {
@@ -195,10 +199,7 @@ impl Parser {
             let op = match &self.current {
                 Token::EOF => break,
                 Token::RightParenthesis => break,
-                Token::Semicolon => {
-                    self.advance();
-                    break;
-                }
+                Token::Semicolon => break,
                 Token::Plus => BinaryOperator::Add,
                 Token::Minus => BinaryOperator::Subtract,
                 Token::Divide => BinaryOperator::Divide,
@@ -214,7 +215,7 @@ impl Parser {
                 Token::Assignment => BinaryOperator::Assignment,
                 Token::LeftParenthesis => BinaryOperator::Call,
                 Token::Dot => BinaryOperator::Dot,
-                _ => self.expectation_failure("Binary Operator"),
+                _ => self.expectation_failure(&format!("Binary Operator after {:#?}", &lhs)),
             };
             let (l_bp, r_bp) = self.infix_binding_power(&op);
             if l_bp < minimum_binding_power {
