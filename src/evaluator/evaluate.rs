@@ -72,8 +72,8 @@ impl Eval for BinaryOperation {
             BinaryOperator::Add => match (lhs.clone(), rhs.clone()) {
                 (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
                 (Value::Int(x), Value::Int(y)) => Value::Int(x + y),
-                (Value::String(x), Value::Number(y)) => Value::String(x + y.to_string().as_str()),
-                (Value::Number(y), Value::String(x)) => Value::String(x + y.to_string().as_str()),
+                // (Value::String(x), Value::Number(y)) => Value::String(x + y.to_string().as_str()),
+                // (Value::Number(y), Value::String(x)) => Value::String(x + y.to_string().as_str()),
                 (Value::String(x), Value::String(y)) => Value::String(x + &y),
                 (_, _) => runtime_error("Operands Must be string or number"),
             },
