@@ -276,8 +276,24 @@ impl Parser {
         unimplemented!()
     }
 
-    fn parse_if_statement(&self) -> IfStatement {
-        unimplemented!()
+    fn parse_if_statement(&mut self) -> IfStatement {
+        self.expect_next_token_to_be(Token::Keyword(KW::IF));
+        self.expect_next_token_to_be(Token::LeftParenthesis);
+        let condition = self.parse_expression_within_binding_power(0.0);
+        self.expect_next_token_to_be(Token::RightParenthesis);
+        let then_branch = self.parse_block_statement();
+        let else_branch = if self.current == Token::Keyword(KW::ELSE) {
+            self.advance();
+            Some(self.parse_block_statement())
+        } else {
+            None
+        };
+
+        IfStatement {
+            condition: Box::new(condition),
+            then_branch,
+            else_branch,
+        }
     }
 
     fn parse_while_statement(&self) -> WhileStatement {

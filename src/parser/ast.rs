@@ -85,9 +85,9 @@ pub struct UnaryOperation {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfStatement {
-    condition: Box<Expression>,
-    then_branch: Vec<ASTNode>,
-    else_branch: Option<Vec<ASTNode>>,
+    pub condition: Box<Expression>,
+    pub then_branch: Block,
+    pub else_branch: Option<Block>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -217,17 +217,14 @@ impl Display for UnaryOperation {
 
 impl Display for IfStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "if {} {{\n", self.condition)?;
-        for node in &self.then_branch {
-            writeln!(f, "  {}", node)?;
-        }
+        write!(f, "if {}\n", self.condition)?;
+        write!(f, "{}", &self.then_branch)?;
         if let Some(else_branch) = &self.else_branch {
-            writeln!(f, "}} else {{")?;
-            for node in else_branch {
-                writeln!(f, "  {}", node)?;
-            }
+            write!(f, "else")?;
+            write!(f, "{}", else_branch)
+        } else {
+            Ok(())
         }
-        write!(f, "}}")
     }
 }
 

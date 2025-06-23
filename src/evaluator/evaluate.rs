@@ -101,17 +101,30 @@ impl Eval for Statement {
                     .define_variable(var.name.clone(), value);
                 return Value::Nothing;
             }
-            Statement::Block(block) => {
-                vm.enter_child_scope();
-                let mut retval = Value::Nothing;
-                for stmt in &block.statements {
-                    retval = stmt.evaluate(vm);
+            Statement::Block(block) => block.evaluate(vm),
+            Statement::If(if_stmt) => {
+                let condition = if_stmt.condition.evaluate(vm);
+                if let Value::Boolean(true) = condition {
+                    if_stmt.then_branch.evaluate(vm);
+                } else if let Some(else_branch) = &if_stmt.else_branch {
+                    else_branch.evaluate(vm);
                 }
-                vm.exit_child_scope();
-                return retval;
+                return Value::Nothing;
             }
             _ => unimplemented!(),
         }
+    }
+}
+
+impl Eval for Block {
+    fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
+        vm.enter_child_scope();
+        let mut retval = Value::Nothing;
+        for stmt in &self.statements {
+            retval = stmt.evaluate(vm);
+        }
+        vm.exit_child_scope();
+        return retval;
     }
 }
 
