@@ -229,14 +229,20 @@ impl Eval for BinaryOperation {
 
             BinaryOperator::And => {
                 let left_bool: bool = lhs.clone().into();
-                let right_bool: bool = rhs.clone().into();
-                Value::Boolean(left_bool && right_bool)
+                if !left_bool {
+                    lhs
+                } else {
+                    rhs
+                }
             }
 
             BinaryOperator::Or => {
                 let left_bool: bool = lhs.clone().into();
-                let right_bool: bool = rhs.clone().into();
-                Value::Boolean(left_bool || right_bool)
+                if left_bool {
+                    lhs
+                } else {
+                    rhs
+                }
             }
             BinaryOperator::Equal => Value::Boolean(lhs.clone() == rhs.clone()),
             BinaryOperator::NotEqual => Value::Boolean(lhs.clone() != rhs.clone()),
