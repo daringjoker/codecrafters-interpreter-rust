@@ -282,10 +282,10 @@ impl Eval for BinaryOperation {
                     vm.current_scope
                         .borrow_mut()
                         .update_variable(id.as_str(), value.clone());
+                    return value.clone();
                 } else {
                     runtime_error("Left-hand side of assignment must be an identifier");
                 }
-                return self.right.evaluate(vm);
             }
             _ => unimplemented!("Binary Operator {} is not implemented!", self.operator),
         };
