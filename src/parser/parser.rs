@@ -308,8 +308,18 @@ impl Parser {
         }
     }
 
-    fn parse_while_statement(&self) -> WhileStatement {
-        unimplemented!()
+    fn parse_while_statement(&mut self) -> WhileStatement {
+        self.expect_next_token_to_be(Token::Keyword(KW::WHILE));
+        self.expect_next_token_to_be(Token::LeftParenthesis);
+        let condition = self.parse_expression_within_binding_power(0.0);
+        self.expect_next_token_to_be(Token::RightParenthesis);
+        let body = self
+            .parse_statement()
+            .expect("Expected body of while loop after condition");
+        WhileStatement {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        }
     }
 
     fn parse_return_statement(&self) -> ReturnStatement {

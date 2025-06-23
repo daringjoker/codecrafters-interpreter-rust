@@ -92,8 +92,8 @@ pub struct IfStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WhileStatement {
-    condition: Box<Expression>,
-    body: Vec<ASTNode>,
+    pub condition: Box<Expression>,
+    pub body: Box<Statement>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -230,11 +230,8 @@ impl Display for IfStatement {
 
 impl Display for WhileStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "while {} {{\n", self.condition)?;
-        for node in &self.body {
-            writeln!(f, "  {}", node)?;
-        }
-        write!(f, "}}")
+        write!(f, "while {}\n", self.condition)?;
+        write!(f, "{}", self.body)
     }
 }
 

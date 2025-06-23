@@ -60,7 +60,7 @@ impl Into<bool> for Value {
         match self {
             Value::Number(n) => n != 0.0,
             Value::Int(n) => n != 0,
-            Value::String(s) => !s.is_empty(),
+            Value::String(_) => true,
             Value::Boolean(b) => b,
             Value::Nil => false,
             Value::Nothing => false,
