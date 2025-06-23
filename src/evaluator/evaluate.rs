@@ -124,6 +124,12 @@ impl Eval for Statement {
                 }
                 return Value::Nothing;
             }
+            Statement::While(while_loop) => {
+                while while_loop.condition.evaluate(vm).into() {
+                    while_loop.body.evaluate(vm);
+                }
+                return Value::Nothing;
+            }
             _ => unimplemented!(),
         }
     }
