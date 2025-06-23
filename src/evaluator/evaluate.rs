@@ -117,7 +117,7 @@ impl Eval for Statement {
             Statement::Block(block) => block.evaluate(vm),
             Statement::If(if_stmt) => {
                 let condition = if_stmt.condition.evaluate(vm);
-                if let Value::Boolean(true) = condition {
+                if condition.into() {
                     if_stmt.then_branch.evaluate(vm);
                 } else if let Some(else_branch) = &*if_stmt.else_branch {
                     else_branch.evaluate(vm);
