@@ -13,6 +13,7 @@ pub enum Expression {
     Identifier(String),
     BinaryOperation(BinaryOperation),
     UnaryOperation(UnaryOperation),
+    NOP, // Represents a no-operation expression
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,10 +99,10 @@ pub struct WhileStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForStatement {
-    initializer: Option<Declaration>,
-    condition: Option<Expression>,
-    increment: Option<Expression>,
-    body: Vec<ASTNode>,
+    pub initializer: Box<Option<Statement>>,
+    pub condition: Option<Expression>,
+    pub increment: Box<Option<Statement>>,
+    pub body: Box<Statement>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -163,6 +164,7 @@ impl Display for Expression {
             Expression::Identifier(id) => write!(f, "{}", id),
             Expression::BinaryOperation(op) => write!(f, "{}", op),
             Expression::UnaryOperation(op) => write!(f, "{}", op),
+            Expression::NOP => write!(f, "NOP"),
         }
     }
 }
@@ -238,20 +240,16 @@ impl Display for WhileStatement {
 impl Display for ForStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "for ")?;
-        if let Some(init) = &self.initializer {
+        if let Some(init) = &self.initializer.as_ref() {
             write!(f, "{}; ", init)?;
         }
         if let Some(cond) = &self.condition {
             write!(f, "{}; ", cond)?;
         }
-        if let Some(inc) = &self.increment {
+        if let Some(inc) = self.increment.as_ref() {
             write!(f, "{} ", inc)?;
         }
-        write!(f, "{{\n")?;
-        for node in &self.body {
-            writeln!(f, "  {}", node)?;
-        }
-        write!(f, "}}")
+        write!(f, "  {}", self.body)
     }
 }
 

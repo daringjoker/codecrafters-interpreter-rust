@@ -272,8 +272,37 @@ impl Parser {
         }
     }
 
-    fn parse_for_loop(&self) -> ForStatement {
-        unimplemented!()
+    fn parse_for_loop(&mut self) -> ForStatement {
+        self.expect_next_token_to_be(Token::Keyword(KW::FOR));
+        self.expect_next_token_to_be(Token::LeftParenthesis);
+        let initializer = self.parse_statement();
+        if self.current == Token::Semicolon {
+            self.advance();
+        }
+        let condition = if self.current != Token::Semicolon {
+            Some(self.parse_expression_within_binding_power(0.0))
+        } else {
+            None
+        };
+        if self.current == Token::Semicolon {
+            self.advance();
+        }
+        let increment = if self.current != Token::RightParenthesis {
+            self.parse_statement()
+        } else {
+            None
+        };
+        self.expect_next_token_to_be(Token::RightParenthesis);
+        let body = self
+            .parse_statement()
+            .expect("Expected body of for loop after condition");
+
+        ForStatement {
+            initializer: Box::new(initializer),
+            condition: condition,
+            increment: Box::new(increment),
+            body: Box::new(body),
+        }
     }
 
     fn parse_if_statement(&mut self) -> IfStatement {

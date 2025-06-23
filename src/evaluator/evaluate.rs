@@ -130,6 +130,24 @@ impl Eval for Statement {
                 }
                 return Value::Nothing;
             }
+            Statement::For(for_loop) => {
+                if let Some(decl) = for_loop.initializer.as_ref() {
+                    decl.evaluate(vm);
+                }
+                while for_loop
+                    .condition
+                    .as_ref()
+                    .unwrap_or(&Expression::NOP)
+                    .evaluate(vm)
+                    .into()
+                {
+                    for_loop.body.evaluate(vm);
+                    if let Some(increment) = &for_loop.increment.as_ref() {
+                        increment.evaluate(vm);
+                    }
+                }
+                return Value::Nothing;
+            }
             _ => unimplemented!(),
         }
     }
