@@ -275,7 +275,15 @@ impl Parser {
     fn parse_for_loop(&mut self) -> ForStatement {
         self.expect_next_token_to_be(Token::Keyword(KW::FOR));
         self.expect_next_token_to_be(Token::LeftParenthesis);
-        let initializer = self.parse_statement();
+        let initializer = if self.current == Token::Semicolon {
+            None
+        } else if self.current == Token::Keyword(KW::VAR) {
+            Some(Statement::Declaration(Declaration::Variable(
+                self.parse_variable_declaration(),
+            )))
+        } else {
+            Some(Statement::Expression(self.parse_expression()))
+        };
         if self.current == Token::Semicolon {
             self.advance();
         }
@@ -284,13 +292,15 @@ impl Parser {
         } else {
             None
         };
+
         if self.current == Token::Semicolon {
             self.advance();
         }
-        let increment = if self.current != Token::RightParenthesis {
-            self.parse_statement()
-        } else {
+
+        let increment = if self.current == Token::RightParenthesis {
             None
+        } else {
+            Some(self.parse_expression_within_binding_power(0.0))
         };
         self.expect_next_token_to_be(Token::RightParenthesis);
         let body = self
