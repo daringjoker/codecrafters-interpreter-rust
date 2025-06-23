@@ -124,7 +124,7 @@ pub struct FunctionDeclaration {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
-    statements: Vec<ASTNode>,
+    pub statements: Vec<ASTNode>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

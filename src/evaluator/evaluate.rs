@@ -11,13 +11,31 @@ pub trait Eval {
 
 pub struct VirtualMachine {
     root_scope: Rc<RefCell<Scope>>,
+    current_scope: Rc<RefCell<Scope>>,
 }
 
 impl VirtualMachine {
     pub fn new() -> Self {
+        let global_scope = Rc::new(RefCell::new(Scope::new()));
         VirtualMachine {
-            root_scope: Rc::new(RefCell::new(Scope::new())),
+            root_scope: global_scope.clone(),
+            current_scope: global_scope.clone(),
         }
+    }
+
+    pub fn enter_child_scope(&mut self) {
+        let new_scope = Rc::new(RefCell::new(Scope::new()));
+        new_scope.borrow_mut().parent_scope = Some(self.current_scope.clone());
+        self.current_scope = new_scope.clone();
+    }
+    pub fn exit_child_scope(&mut self) {
+        let cur_scope = self.current_scope.clone();
+        self.current_scope = cur_scope
+            .as_ref()
+            .borrow()
+            .parent_scope
+            .clone()
+            .unwrap_or(self.root_scope.clone());
     }
 }
 
@@ -68,7 +86,7 @@ impl Eval for Statement {
             }
             Statement::Print(pr) => {
                 let expr = pr.value.evaluate(vm);
-                eprintln!("{} =>{}", pr, expr);
+                // eprintln!("{} =>{}", pr, expr);
                 println!("{}", expr);
                 return Value::Nothing;
             }
@@ -78,10 +96,19 @@ impl Eval for Statement {
                 } else {
                     None
                 };
-                vm.root_scope
+                vm.current_scope
                     .borrow_mut()
                     .define_variable(var.name.clone(), value);
                 return Value::Nothing;
+            }
+            Statement::Block(block) => {
+                vm.enter_child_scope();
+                let mut retval = Value::Nothing;
+                for stmt in &block.statements {
+                    retval = stmt.evaluate(vm);
+                }
+                vm.exit_child_scope();
+                return retval;
             }
             _ => unimplemented!(),
         }
@@ -95,7 +122,7 @@ impl Eval for Expression {
             Expression::BinaryOperation(op) => op.evaluate(vm),
             Expression::UnaryOperation(op) => op.evaluate(vm),
             Expression::Identifier(id) => vm
-                .root_scope
+                .current_scope
                 .as_ref()
                 .borrow()
                 .get_variable_value(id)
@@ -178,7 +205,7 @@ impl Eval for BinaryOperation {
             BinaryOperator::NotEqual => Value::Boolean(lhs.clone() != rhs.clone()),
             BinaryOperator::Assignment => {
                 if let Expression::Identifier(id) = &self.left.as_ref() {
-                    vm.root_scope
+                    vm.current_scope
                         .borrow_mut()
                         .update_variable(id.as_str(), rhs.clone());
                 } else {
@@ -189,10 +216,10 @@ impl Eval for BinaryOperation {
             _ => unimplemented!("Binary Operator {} is not implemented!", self.operator),
         };
 
-        eprintln!(
-            "{} {} {} == {} {} {} = {}",
-            &self.left, &self.operator, &self.right, &lhs, &self.operator, &rhs, &retval
-        );
+        // eprintln!(
+        //     "{} {} {} == {} {} {} = {}",
+        //     &self.left, &self.operator, &self.right, &lhs, &self.operator, &rhs, &retval
+        // );
 
         retval
     }
@@ -213,10 +240,10 @@ impl Eval for UnaryOperation {
             (UnaryOperator::Group, l) => l,
             (_, _) => runtime_error("undefined behaviour"),
         };
-        eprintln!(
-            "{} {} == {} {} = {}",
-            &self.operator, &self.operand, &self.operator, lhs, retval
-        );
+        // eprintln!(
+        //     "{} {} == {} {} = {}",
+        //     &self.operator, &self.operand, &self.operator, lhs, retval
+        // );
         return retval;
     }
 }

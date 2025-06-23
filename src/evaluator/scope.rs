@@ -13,7 +13,7 @@ pub enum ScopeLevel {
 #[derive(Clone, Debug)]
 pub struct Scope {
     level: ScopeLevel,
-    parent_scope: Option<Rc<RefCell<Scope>>>,
+    pub parent_scope: Option<Rc<RefCell<Scope>>>,
     variables: HashMap<String, Value>,
 }
 

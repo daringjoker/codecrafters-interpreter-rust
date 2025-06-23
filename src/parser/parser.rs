@@ -100,13 +100,13 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> AST {
-        let nodes = self.parse_program();
+        let nodes = self.parse_program_till(Token::EOF);
         return AST { root: None, nodes };
     }
 
-    pub fn parse_program(&mut self) -> Vec<ASTNode> {
+    pub fn parse_program_till(&mut self, ending_token: Token) -> Vec<ASTNode> {
         let mut nodes: Vec<ASTNode> = vec![];
-        while !self.is_at_end() && self.current != Token::EOF {
+        while !self.is_at_end() && self.current != Token::EOF && self.current != ending_token {
             let stm = self.parse_statement();
             if stm.is_some() {
                 if self.current == Token::Semicolon {
@@ -205,6 +205,7 @@ impl Parser {
                 Token::EOF => break,
                 Token::RightParenthesis => break,
                 Token::Semicolon => break,
+                Token::RightBrace => break,
                 Token::Plus => BinaryOperator::Add,
                 Token::Minus => BinaryOperator::Subtract,
                 Token::Divide => BinaryOperator::Divide,
@@ -310,8 +311,11 @@ impl Parser {
         unimplemented!()
     }
 
-    fn parse_block_statement(&self) -> Block {
-        unimplemented!()
+    fn parse_block_statement(&mut self) -> Block {
+        self.expect_next_token_to_be(Token::LeftBrace);
+        let nodes = self.parse_program_till(Token::RightBrace);
+        self.expect_next_token_to_be(Token::RightBrace);
+        Block { statements: nodes }
     }
 
     fn parse_declaration(&mut self) -> Declaration {
