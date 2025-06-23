@@ -55,6 +55,19 @@ impl Value {
     }
 }
 
+impl Into<bool> for Value {
+    fn into(self) -> bool {
+        match self {
+            Value::Number(n) => n != 0.0,
+            Value::Int(n) => n != 0,
+            Value::String(s) => !s.is_empty(),
+            Value::Boolean(b) => b,
+            Value::Nil => false,
+            Value::Nothing => false,
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
@@ -214,6 +227,17 @@ impl Eval for BinaryOperation {
                 (_, _) => runtime_error("Operands Must be number"),
             },
 
+            BinaryOperator::And => {
+                let left_bool: bool = lhs.clone().into();
+                let right_bool: bool = rhs.clone().into();
+                Value::Boolean(left_bool && right_bool)
+            }
+
+            BinaryOperator::Or => {
+                let left_bool: bool = lhs.clone().into();
+                let right_bool: bool = rhs.clone().into();
+                Value::Boolean(left_bool || right_bool)
+            }
             BinaryOperator::Equal => Value::Boolean(lhs.clone() == rhs.clone()),
             BinaryOperator::NotEqual => Value::Boolean(lhs.clone() != rhs.clone()),
             BinaryOperator::Assignment => {
