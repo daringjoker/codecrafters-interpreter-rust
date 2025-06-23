@@ -284,12 +284,19 @@ impl Parser {
         let then_branch = self
             .parse_statement()
             .expect("Expected then branch after if condition");
+        if self.current == Token::Semicolon {
+            self.advance();
+        }
         let else_branch = if self.current == Token::Keyword(KW::ELSE) {
             self.advance();
-            Some(
+            let else_statement = Some(
                 self.parse_statement()
                     .expect("Expected else branch after else condition"),
-            )
+            );
+            if self.current == Token::Semicolon {
+                self.advance();
+            }
+            else_statement
         } else {
             None
         };
