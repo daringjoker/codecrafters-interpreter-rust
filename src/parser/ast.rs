@@ -86,8 +86,8 @@ pub struct UnaryOperation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfStatement {
     pub condition: Box<Expression>,
-    pub then_branch: Block,
-    pub else_branch: Option<Block>,
+    pub then_branch: Box<Statement>,
+    pub else_branch: Box<Option<Statement>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -219,7 +219,7 @@ impl Display for IfStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "if {}\n", self.condition)?;
         write!(f, "{}", &self.then_branch)?;
-        if let Some(else_branch) = &self.else_branch {
+        if let Some(else_branch) = &self.else_branch.as_ref() {
             write!(f, "else")?;
             write!(f, "{}", else_branch)
         } else {

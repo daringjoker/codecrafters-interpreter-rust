@@ -281,18 +281,23 @@ impl Parser {
         self.expect_next_token_to_be(Token::LeftParenthesis);
         let condition = self.parse_expression_within_binding_power(0.0);
         self.expect_next_token_to_be(Token::RightParenthesis);
-        let then_branch = self.parse_block_statement();
+        let then_branch = self
+            .parse_statement()
+            .expect("Expected then branch after if condition");
         let else_branch = if self.current == Token::Keyword(KW::ELSE) {
             self.advance();
-            Some(self.parse_block_statement())
+            Some(
+                self.parse_statement()
+                    .expect("Expected else branch after else condition"),
+            )
         } else {
             None
         };
 
         IfStatement {
             condition: Box::new(condition),
-            then_branch,
-            else_branch,
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
         }
     }
 

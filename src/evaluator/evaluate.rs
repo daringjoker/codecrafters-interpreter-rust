@@ -106,7 +106,7 @@ impl Eval for Statement {
                 let condition = if_stmt.condition.evaluate(vm);
                 if let Value::Boolean(true) = condition {
                     if_stmt.then_branch.evaluate(vm);
-                } else if let Some(else_branch) = &if_stmt.else_branch {
+                } else if let Some(else_branch) = &*if_stmt.else_branch {
                     else_branch.evaluate(vm);
                 }
                 return Value::Nothing;
