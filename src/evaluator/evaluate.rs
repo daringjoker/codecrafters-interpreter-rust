@@ -173,10 +173,11 @@ impl Eval for Literal {
 
 impl Eval for BinaryOperation {
     fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
-        let lhs = self.left.evaluate(vm);
-        let rhs = self.right.evaluate(vm);
         let retval = match self.operator {
-            BinaryOperator::Add => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::Add => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Number(x + y),
                 (Value::Int(x), Value::Int(y)) => Value::Int(x + y),
                 // (Value::String(x), Value::Number(y)) => Value::String(x + y.to_string().as_str()),
@@ -185,83 +186,113 @@ impl Eval for BinaryOperation {
                 (_, _) => runtime_error("Operands Must be string or number"),
             },
 
-            BinaryOperator::Subtract => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::Subtract => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Number(x - y),
                 (Value::Int(x), Value::Int(y)) => Value::Int(x - y),
                 (_, _) => runtime_error("Operands Must be string or number"),
             },
 
-            BinaryOperator::Multiply => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::Multiply => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Number(x * y),
                 (Value::Int(x), Value::Int(y)) => Value::Int(x * y),
                 (_, _) => runtime_error("Operands Must be number"),
             },
 
-            BinaryOperator::Divide => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::Divide => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Number(x / y),
                 (Value::Int(x), Value::Int(y)) => Value::Int(x / y),
                 (_, _) => runtime_error("Operands Must be number"),
             },
 
-            BinaryOperator::LessThan => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::LessThan => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Boolean(x < y),
                 (Value::Int(x), Value::Int(y)) => Value::Boolean(x < y),
                 (_, _) => runtime_error("Operands Must be number"),
             },
 
-            BinaryOperator::LessThanOrEqual => match (lhs.clone(), rhs.clone()) {
-                (Value::Number(x), Value::Number(y)) => Value::Boolean(x <= y),
-                (Value::Int(x), Value::Int(y)) => Value::Boolean(x <= y),
-                (_, _) => runtime_error("Operands Must be number"),
-            },
+            BinaryOperator::LessThanOrEqual => {
+                match (
+                    self.left.evaluate(vm).clone(),
+                    self.right.evaluate(vm).clone(),
+                ) {
+                    (Value::Number(x), Value::Number(y)) => Value::Boolean(x <= y),
+                    (Value::Int(x), Value::Int(y)) => Value::Boolean(x <= y),
+                    (_, _) => runtime_error("Operands Must be number"),
+                }
+            }
 
-            BinaryOperator::GreaterThan => match (lhs.clone(), rhs.clone()) {
+            BinaryOperator::GreaterThan => match (
+                self.left.evaluate(vm).clone(),
+                self.right.evaluate(vm).clone(),
+            ) {
                 (Value::Number(x), Value::Number(y)) => Value::Boolean(x > y),
                 (Value::Int(x), Value::Int(y)) => Value::Boolean(x > y),
                 (_, _) => runtime_error("Operands Must be number"),
             },
 
-            BinaryOperator::GreaterThanOrEqual => match (lhs.clone(), rhs.clone()) {
-                (Value::Number(x), Value::Number(y)) => Value::Boolean(x >= y),
-                (Value::Int(x), Value::Int(y)) => Value::Boolean(x >= y),
-                (_, _) => runtime_error("Operands Must be number"),
-            },
+            BinaryOperator::GreaterThanOrEqual => {
+                match (
+                    self.left.evaluate(vm).clone(),
+                    self.right.evaluate(vm).clone(),
+                ) {
+                    (Value::Number(x), Value::Number(y)) => Value::Boolean(x >= y),
+                    (Value::Int(x), Value::Int(y)) => Value::Boolean(x >= y),
+                    (_, _) => runtime_error("Operands Must be number"),
+                }
+            }
 
             BinaryOperator::And => {
-                let left_bool: bool = lhs.clone().into();
+                let left_bool: bool = self.left.evaluate(vm).clone().into();
                 if !left_bool {
-                    lhs
+                    self.left.evaluate(vm)
                 } else {
-                    rhs
+                    self.right.evaluate(vm)
                 }
             }
 
             BinaryOperator::Or => {
-                let left_bool: bool = lhs.clone().into();
+                let left_bool: bool = self.left.evaluate(vm).clone().into();
                 if left_bool {
-                    lhs
+                    self.left.evaluate(vm)
                 } else {
-                    rhs
+                    self.right.evaluate(vm)
                 }
             }
-            BinaryOperator::Equal => Value::Boolean(lhs.clone() == rhs.clone()),
-            BinaryOperator::NotEqual => Value::Boolean(lhs.clone() != rhs.clone()),
+            BinaryOperator::Equal => {
+                Value::Boolean(self.left.evaluate(vm).clone() == self.right.evaluate(vm).clone())
+            }
+            BinaryOperator::NotEqual => {
+                Value::Boolean(self.left.evaluate(vm).clone() != self.right.evaluate(vm).clone())
+            }
             BinaryOperator::Assignment => {
                 if let Expression::Identifier(id) = &self.left.as_ref() {
+                    let value = self.right.evaluate(vm);
                     vm.current_scope
                         .borrow_mut()
-                        .update_variable(id.as_str(), rhs.clone());
+                        .update_variable(id.as_str(), value.clone());
                 } else {
                     runtime_error("Left-hand side of assignment must be an identifier");
                 }
-                return rhs;
+                return self.right.evaluate(vm);
             }
             _ => unimplemented!("Binary Operator {} is not implemented!", self.operator),
         };
 
         // eprintln!(
         //     "{} {} {} == {} {} {} = {}",
-        //     &self.left, &self.operator, &self.right, &lhs, &self.operator, &rhs, &retval
+        //     &self.left, &self.operator, &self.right, &self.left.evaluate(vm), &self.operator, &rhs, &retval
         // );
 
         retval
