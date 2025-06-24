@@ -303,9 +303,13 @@ impl Parser {
             Some(self.parse_expression_within_binding_power(0.0))
         };
         self.expect_next_token_to_be(Token::RightParenthesis);
+
         let body = self
             .parse_statement()
             .expect("Expected body of for loop after condition");
+        if matches!(body, Statement::Declaration(_)) {
+            self.expectation_failure("statement or expression");
+        }
 
         ForStatement {
             initializer: Box::new(initializer),

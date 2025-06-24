@@ -178,6 +178,7 @@ impl Eval for Expression {
                 .get_variable_value(id)
                 .unwrap_or_else(|| runtime_error(&format!("Variable {} not found", id)))
                 .clone(),
+            Expression::NOP => Value::Nothing,
             _ => unimplemented!(),
         }
     }
