@@ -310,7 +310,7 @@ impl Parser {
         ForStatement {
             initializer: Box::new(initializer),
             condition: condition,
-            increment: Box::new(increment),
+            increment: Box::new(increment.and_then(|e| Some(Statement::Expression(e)))),
             body: Box::new(body),
         }
     }
