@@ -21,15 +21,13 @@ impl Callable for FunctionDeclaration {
                 args.len()
             ));
         }
-        vm.enter_child_scope();
         for (param, arg) in self.parameters.iter().zip(args) {
             vm.current_scope
                 .borrow_mut()
                 .define_variable(param.clone(), Some(arg));
         }
-        let result = self.body.evaluate(vm);
-        vm.exit_child_scope();
-        result
+        self.body.evaluate(vm);
+        Value::Nothing
     }
     fn name(&self) -> String {
         self.name.clone()
@@ -75,7 +73,12 @@ impl Eval for Statement {
                     .define_variable(var.name.clone(), value);
                 return Value::Nothing;
             }
-            Statement::Block(block) => block.evaluate(vm),
+            Statement::Block(block) => {
+                let prev = vm.enter_child_scope();
+                block.evaluate(vm);
+                vm.exit_child_scope(prev);
+                return Value::Nothing;
+            }
             Statement::If(if_stmt) => {
                 let condition = if_stmt.condition.evaluate(vm);
                 if condition.into() {
@@ -88,7 +91,13 @@ impl Eval for Statement {
 
             Statement::While(while_loop) => {
                 while while_loop.condition.evaluate(vm).into() {
-                    while_loop.body.evaluate(vm);
+                    if vm.current_scope.borrow_mut().is_alive() {
+                        // If the scope is not killed, continue evaluating the body
+                        while_loop.body.evaluate(vm);
+                    } else {
+                        // If the scope is killed, break out of the loop
+                        break;
+                    }
                 }
                 return Value::Nothing;
             }
@@ -115,6 +124,9 @@ impl Eval for Statement {
                     .evaluate(vm)
                     .into()
                 {
+                    if !vm.current_scope.borrow_mut().is_alive() {
+                        break; // Exit the loop if the scope is killed
+                    }
                     for_loop.body.evaluate(vm);
                     if let Some(increment) = &for_loop.increment.as_ref() {
                         increment.evaluate(vm);
@@ -123,12 +135,12 @@ impl Eval for Statement {
                 return Value::Nothing;
             }
             Statement::Return(ret) => {
-                let value = ret
-                    .value
-                    .as_ref()
-                    .map_or(Value::Nothing, |v| v.evaluate(vm));
-                vm.exit_child_scope();
-                return value;
+                let value = ret.value.as_ref().map_or(Value::Nil, |v| v.evaluate(vm));
+                vm.current_scope
+                    .borrow_mut()
+                    .set_return_value(value.clone());
+                vm.current_scope.borrow_mut().kill_scope();
+                return Value::Nothing;
             }
             _ => unimplemented!(),
         }
@@ -137,13 +149,13 @@ impl Eval for Statement {
 
 impl Eval for Block {
     fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
-        vm.enter_child_scope();
-        let mut retval = Value::Nothing;
         for stmt in &self.statements {
-            retval = stmt.evaluate(vm);
+            stmt.evaluate(vm);
+            if !vm.current_scope.borrow_mut().is_alive() {
+                break;
+            }
         }
-        vm.exit_child_scope();
-        return retval;
+        Value::Nothing
     }
 }
 
@@ -290,9 +302,33 @@ impl Eval for BinaryOperation {
                 if let Expression::Identifier(id) = &self.left.as_ref() {
                     let func_option = vm.current_scope.borrow().get_variable_value(id.as_str());
                     if let Some(func) = func_option {
-                        if let Value::Function(func, _closure) = func {
+                        if let Value::Function(func, closure) = func {
                             let args = comma_to_vec(*self.right.clone(), vm);
-                            return func.call(vm, args);
+                            // Enter a new scope for the function call
+                            // eprintln!("Calling function {} with args: {:?}", id, args);
+                            if args.len() != func.arity() {
+                                runtime_error(&format!(
+                                    "Function {} expects {} arguments, got {}",
+                                    id,
+                                    func.arity(),
+                                    args.len()
+                                ));
+                            }
+                            let curr_scope = vm.enter_closured_scope(closure);
+                            let retval = func.call(vm, args.clone());
+                            let scoped_return_value = vm.exit_child_scope(curr_scope);
+                            if func.callable_type()
+                                == super::callable::CallableType::UserDefinedFunction
+                            {
+                                // eprintln!(
+                                //     " {}({:?}) returned: {:?}",
+                                //     id, &args, scoped_return_value
+                                // );
+                                return scoped_return_value;
+                            } else {
+                                // eprintln!(" {}({:?}) returned: {:?}", id, &args, retval);
+                                return retval;
+                            }
                         } else {
                             runtime_error(&format!("{} is not a function", id));
                         }

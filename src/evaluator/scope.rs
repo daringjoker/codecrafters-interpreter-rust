@@ -13,17 +13,36 @@ pub enum ScopeLevel {
 #[derive(Clone, Debug)]
 pub struct Scope {
     level: ScopeLevel,
+    alive: bool,
+    return_value: Option<Value>,
     pub parent_scope: Option<Rc<RefCell<Scope>>>,
     variables: HashMap<String, Value>,
 }
 
 impl Scope {
-    pub fn new() -> Scope {
+    pub fn new(level: ScopeLevel) -> Scope {
         Scope {
-            level: ScopeLevel::Global,
+            level,
             parent_scope: None,
             variables: HashMap::new(),
+            return_value: None,
+            alive: true,
         }
+    }
+
+    pub fn get_return_value(&self) -> Option<Value> {
+        self.return_value.clone()
+    }
+    pub fn set_return_value(&mut self, value: Value) {
+        self.return_value = Some(value);
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.alive
+    }
+
+    pub fn kill_scope(&mut self) {
+        self.alive = false;
     }
 
     pub fn define_variable(&mut self, name: String, value: Option<Value>) {

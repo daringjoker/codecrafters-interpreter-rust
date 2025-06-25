@@ -1,6 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::evaluator::{scope::Scope, value::Value};
+use crate::evaluator::{
+    scope::{Scope, ScopeLevel},
+    value::Value,
+};
 
 pub struct VirtualMachine {
     root_scope: Rc<RefCell<Scope>>,
@@ -9,7 +12,7 @@ pub struct VirtualMachine {
 
 impl VirtualMachine {
     pub fn new() -> Self {
-        let global_scope = Rc::new(RefCell::new(Scope::new()));
+        let global_scope = Rc::new(RefCell::new(Scope::new(ScopeLevel::Global)));
         let mut machine = VirtualMachine {
             root_scope: global_scope.clone(),
             current_scope: global_scope.clone(),
@@ -31,18 +34,29 @@ impl VirtualMachine {
         }
     }
 
-    pub fn enter_child_scope(&mut self) {
-        let new_scope = Rc::new(RefCell::new(Scope::new()));
+    pub fn enter_child_scope(&mut self) -> Rc<RefCell<Scope>> {
+        let new_scope = Rc::new(RefCell::new(Scope::new(ScopeLevel::Block)));
         new_scope.borrow_mut().parent_scope = Some(self.current_scope.clone());
+        let previous_scope = self.current_scope.clone();
         self.current_scope = new_scope.clone();
+        previous_scope
     }
-    pub fn exit_child_scope(&mut self) {
+
+    pub fn enter_closured_scope(
+        &mut self,
+        closure: Option<Rc<RefCell<Scope>>>,
+    ) -> Rc<RefCell<Scope>> {
+        let new_scope = Rc::new(RefCell::new(Scope::new(ScopeLevel::Closure)));
+        new_scope.borrow_mut().parent_scope = Some(closure.unwrap_or(self.root_scope.clone()));
+        let previous_scope = self.current_scope.clone();
+        self.current_scope = new_scope.clone();
+        previous_scope
+    }
+
+    pub fn exit_child_scope(&mut self, prev_scope: Rc<RefCell<Scope>>) -> Value {
         let cur_scope = self.current_scope.clone();
-        self.current_scope = cur_scope
-            .as_ref()
-            .borrow()
-            .parent_scope
-            .clone()
-            .unwrap_or(self.root_scope.clone());
+        self.current_scope = prev_scope.clone();
+        let return_value = cur_scope.borrow().get_return_value();
+        return return_value.unwrap_or(Value::Nil);
     }
 }
