@@ -56,13 +56,16 @@ impl Parser {
 
         self.pos = current_pos_token.pos;
 
-        self.previous = self
-            .tokens
-            .iter()
-            .nth(self.current_index - 1)
-            .unwrap_or(&invalid_pos_token)
-            .clone()
-            .tok;
+        self.previous = if self.current_index > 0 {
+            self.tokens
+                .iter()
+                .nth(self.current_index - 1)
+                .unwrap_or(&invalid_pos_token)
+                .clone()
+                .tok
+        } else {
+            invalid_pos_token.tok.clone()
+        };
 
         self.next = self
             .tokens
@@ -153,6 +156,7 @@ impl Parser {
             BinaryOperator::Call => (9.1, 9.2),
 
             BinaryOperator::Dot => (10.1, 10.2),
+            BinaryOperator::Comma => (11.1, 11.2),
             _ => (0.0, 0.0),
         }
     }
@@ -219,7 +223,34 @@ impl Parser {
                 Token::Equals => BinaryOperator::Equal,
                 Token::NotEquals => BinaryOperator::NotEqual,
                 Token::Assignment => BinaryOperator::Assignment,
-                Token::LeftParenthesis => BinaryOperator::Call,
+                Token::LeftParenthesis => {
+                    // Special case for function calls - check if it's empty
+                    self.advance(); // consume the '('
+                    if self.current == Token::RightParenthesis {
+                        // Empty function call
+                        lhs = Expression::BinaryOperation(BinaryOperation {
+                            left: Box::new(lhs),
+                            operator: BinaryOperator::Call,
+                            right: Box::new(Expression::NOP), // Empty arguments
+                        });
+                        self.advance(); // consume the ')'
+                        continue;
+                    } else {
+                        // Function call with arguments
+                        let args = self.parse_expression_within_binding_power(0.0);
+                        if self.current != Token::RightParenthesis {
+                            self.expectation_failure("')'")
+                        }
+                        self.advance(); // consume the ')'
+                        lhs = Expression::BinaryOperation(BinaryOperation {
+                            left: Box::new(lhs),
+                            operator: BinaryOperator::Call,
+                            right: Box::new(args),
+                        });
+                        continue;
+                    }
+                }
+                Token::Comma => BinaryOperator::Comma,
                 Token::Dot => BinaryOperator::Dot,
                 _ => self.expectation_failure(&format!("Binary Operator after {:#?}", &lhs)),
             };

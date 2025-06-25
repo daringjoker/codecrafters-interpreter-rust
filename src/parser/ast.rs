@@ -61,6 +61,7 @@ pub enum BinaryOperator {
     Assignment,
     Call,
     Dot,
+    Comma,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -325,6 +326,7 @@ impl Display for BinaryOperator {
             BinaryOperator::Assignment => write!(f, "="),
             BinaryOperator::Call => write!(f, "call"),
             BinaryOperator::Dot => write!(f, "."),
+            BinaryOperator::Comma => write!(f, ","),
         }
     }
 }

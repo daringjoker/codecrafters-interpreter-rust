@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::exit;
 mod evaluator;
+mod native_functions;
 mod parser;
 mod tokenizer;
 

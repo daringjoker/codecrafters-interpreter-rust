@@ -17,9 +17,25 @@ pub struct VirtualMachine {
 impl VirtualMachine {
     pub fn new() -> Self {
         let global_scope = Rc::new(RefCell::new(Scope::new()));
-        VirtualMachine {
+        let mut machine = VirtualMachine {
             root_scope: global_scope.clone(),
             current_scope: global_scope.clone(),
+        };
+
+        // Register native functions in the global scope
+        machine.register_all_native_functions();
+
+        machine
+    }
+
+    /// Register all native functions from the compile-time registry
+    fn register_all_native_functions(&mut self) {
+        for registration in crate::native_functions::get_all_native_functions() {
+            let callable = registration.create_callable();
+            self.root_scope.borrow_mut().define_variable(
+                registration.name.to_string(),
+                Some(Value::Function(callable)),
+            );
         }
     }
 
@@ -39,7 +55,7 @@ impl VirtualMachine {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone)]
 pub enum Value {
     Number(f64),
     Int(i64),
@@ -47,11 +63,12 @@ pub enum Value {
     Boolean(bool),
     Nothing,
     Nil,
+    Function(Rc<dyn crate::evaluator::callable::Callable>),
 }
 
 impl Value {
     pub fn is_nothing(&self) -> bool {
-        *self == Value::Nothing
+        matches!(self, Value::Nothing)
     }
 }
 
@@ -64,6 +81,7 @@ impl Into<bool> for Value {
             Value::Boolean(b) => b,
             Value::Nil => false,
             Value::Nothing => false,
+            Value::Function(_) => true,
         }
     }
 }
@@ -77,6 +95,21 @@ impl Display for Value {
             Value::Boolean(n) => write!(f, "{}", n),
             Value::Nil => write!(f, "nil"),
             Value::Nothing => write!(f, "Nothing"),
+            Value::Function(func) => write!(f, "<native fn {}>", func.name()),
+        }
+    }
+}
+
+impl std::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Number(n) => write!(f, "Number({})", n),
+            Value::Int(n) => write!(f, "Int({})", n),
+            Value::String(s) => write!(f, "String({:?})", s),
+            Value::Boolean(b) => write!(f, "Boolean({})", b),
+            Value::Nothing => write!(f, "Nothing"),
+            Value::Nil => write!(f, "Nil"),
+            Value::Function(func) => write!(f, "Function({})", func.name()),
         }
     }
 }
@@ -179,7 +212,6 @@ impl Eval for Expression {
                 .unwrap_or_else(|| runtime_error(&format!("Variable {} not found", id)))
                 .clone(),
             Expression::NOP => Value::Nothing,
-            _ => unimplemented!(),
         }
     }
 }
@@ -301,6 +333,27 @@ impl Eval for BinaryOperation {
             BinaryOperator::NotEqual => {
                 Value::Boolean(self.left.evaluate(vm).clone() != self.right.evaluate(vm).clone())
             }
+            BinaryOperator::Comma => {
+                let _ = self.left.evaluate(vm);
+                self.right.evaluate(vm)
+            }
+            BinaryOperator::Call => {
+                if let Expression::Identifier(id) = &self.left.as_ref() {
+                    let func_option = vm.current_scope.borrow().get_variable_value(id.as_str());
+                    if let Some(func) = func_option {
+                        if let Value::Function(func) = func {
+                            let args = comma_to_vec(*self.right.clone(), vm);
+                            return func.call(vm, args);
+                        } else {
+                            runtime_error(&format!("{} is not a function", id));
+                        }
+                    } else {
+                        runtime_error(&format!("Function {} not found", id));
+                    }
+                } else {
+                    runtime_error("Left-hand side of call must be an identifier");
+                }
+            }
             BinaryOperator::Assignment => {
                 if let Expression::Identifier(id) = &self.left.as_ref() {
                     let value = self.right.evaluate(vm);
@@ -344,6 +397,38 @@ impl Eval for UnaryOperation {
         //     &self.operator, &self.operand, &self.operator, lhs, retval
         // );
         return retval;
+    }
+}
+
+fn comma_to_vec(expr: Expression, vm: &mut VirtualMachine) -> Vec<Value> {
+    match expr {
+        Expression::NOP => vec![], // Empty argument list
+        Expression::BinaryOperation(comma_operation) => {
+            if matches!(comma_operation.operator, BinaryOperator::Comma) {
+                let mut left_values = comma_to_vec(*comma_operation.left, vm);
+                let mut right_values = comma_to_vec(*comma_operation.right, vm);
+                left_values.append(&mut right_values);
+                left_values
+            } else {
+                vec![Expression::BinaryOperation(comma_operation).evaluate(vm)]
+            }
+        }
+        _ => vec![expr.evaluate(vm)],
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::Int(a), Value::Int(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Nothing, Value::Nothing) => true,
+            (Value::Nil, Value::Nil) => true,
+            (Value::Function(a), Value::Function(b)) => a.name() == b.name(),
+            _ => false,
+        }
     }
 }
 
