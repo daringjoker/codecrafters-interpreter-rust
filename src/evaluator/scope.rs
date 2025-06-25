@@ -1,7 +1,7 @@
 use crate::evaluator::{evaluate::runtime_error, value::Value};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ScopeLevel {
     Global,
     Module,
@@ -10,18 +10,31 @@ pub enum ScopeLevel {
     Closure,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Scope {
-    level: ScopeLevel,
+    pub reason: String,
+    pub level: ScopeLevel,
     alive: bool,
     return_value: Option<Value>,
     pub parent_scope: Option<Rc<RefCell<Scope>>>,
-    variables: HashMap<String, Value>,
+    pub variables: HashMap<String, Value>,
 }
 
+impl Display for Scope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Scope(level: {:?}, reason: '{}' variables: {:?})",
+            self.level,
+            self.reason,
+            self.variables.keys().collect::<Vec<&String>>(),
+        )
+    }
+}
 impl Scope {
-    pub fn new(level: ScopeLevel) -> Scope {
+    pub fn new(level: ScopeLevel, reason: &str) -> Scope {
         Scope {
+            reason: reason.to_string(),
             level,
             parent_scope: None,
             variables: HashMap::new(),

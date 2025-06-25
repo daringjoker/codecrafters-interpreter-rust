@@ -1,5 +1,7 @@
 use crate::{
-    evaluator::{callable::Callable, value::Value, virtual_machine::VirtualMachine},
+    evaluator::{
+        callable::Callable, scope::ScopeLevel, value::Value, virtual_machine::VirtualMachine,
+    },
     parser::ast::*,
 };
 use std::{process::exit, rc::Rc};
@@ -26,7 +28,12 @@ impl Callable for FunctionDeclaration {
                 .borrow_mut()
                 .define_variable(param.clone(), Some(arg));
         }
-        self.body.evaluate(vm);
+        for stmt in &self.body.statements {
+            if !vm.current_scope.borrow_mut().is_alive() {
+                break;
+            }
+            stmt.evaluate(vm);
+        }
         Value::Nothing
     }
     fn name(&self) -> String {
@@ -73,12 +80,7 @@ impl Eval for Statement {
                     .define_variable(var.name.clone(), value);
                 return Value::Nothing;
             }
-            Statement::Block(block) => {
-                let prev = vm.enter_child_scope();
-                block.evaluate(vm);
-                vm.exit_child_scope(prev);
-                return Value::Nothing;
-            }
+            Statement::Block(block) => block.evaluate(vm),
             Statement::If(if_stmt) => {
                 let condition = if_stmt.condition.evaluate(vm);
                 if condition.into() {
@@ -92,10 +94,8 @@ impl Eval for Statement {
             Statement::While(while_loop) => {
                 while while_loop.condition.evaluate(vm).into() {
                     if vm.current_scope.borrow_mut().is_alive() {
-                        // If the scope is not killed, continue evaluating the body
                         while_loop.body.evaluate(vm);
                     } else {
-                        // If the scope is killed, break out of the loop
                         break;
                     }
                 }
@@ -136,11 +136,8 @@ impl Eval for Statement {
             }
             Statement::Return(ret) => {
                 let value = ret.value.as_ref().map_or(Value::Nil, |v| v.evaluate(vm));
-                vm.current_scope
-                    .borrow_mut()
-                    .set_return_value(value.clone());
-                vm.current_scope.borrow_mut().kill_scope();
-                return Value::Nothing;
+                vm.start_return_sequence(value.clone());
+                return value;
             }
             _ => unimplemented!(),
         }
@@ -149,12 +146,14 @@ impl Eval for Statement {
 
 impl Eval for Block {
     fn evaluate(&self, vm: &mut VirtualMachine) -> Value {
+        vm.enter_child_scope();
         for stmt in &self.statements {
-            stmt.evaluate(vm);
             if !vm.current_scope.borrow_mut().is_alive() {
                 break;
             }
+            stmt.evaluate(vm);
         }
+        vm.exit_child_scope();
         Value::Nothing
     }
 }
@@ -170,7 +169,10 @@ impl Eval for Expression {
                 .as_ref()
                 .borrow()
                 .get_variable_value(id)
-                .unwrap_or_else(|| runtime_error(&format!("Variable {} not found", id)))
+                .unwrap_or_else(|| {
+                    dbg!(vm.current_scope.borrow().variables.keys());
+                    runtime_error(&format!("Variable {} not found", id))
+                })
                 .clone(),
             Expression::NOP => Value::Nothing,
         }
@@ -302,8 +304,6 @@ impl Eval for BinaryOperation {
                 let callable = self.left.evaluate(vm);
                 if let Value::Function(func, closure) = callable {
                     let args = comma_to_vec(*self.right.clone(), vm);
-                    // Enter a new scope for the function call
-                    // eprintln!("Calling function {} with args: {:?}", id, args);
                     if args.len() != func.arity() {
                         runtime_error(&format!(
                             "Function {} expects {} arguments, got {}",
@@ -312,17 +312,12 @@ impl Eval for BinaryOperation {
                             args.len()
                         ));
                     }
-                    let curr_scope = vm.enter_closured_scope(closure);
+                    vm.enter_closured_scope(closure, func.name().as_str());
                     let retval = func.call(vm, args.clone());
-                    let scoped_return_value = vm.exit_child_scope(curr_scope);
+                    let scoped_return_value = vm.return_from_call();
                     if func.callable_type() == super::callable::CallableType::UserDefinedFunction {
-                        // eprintln!(
-                        //     " {}({:?}) returned: {:?}",
-                        //     id, &args, scoped_return_value
-                        // );
                         return scoped_return_value;
                     } else {
-                        // eprintln!(" {}({:?}) returned: {:?}", id, &args, retval);
                         return retval;
                     }
                 } else {
@@ -376,6 +371,7 @@ impl Eval for UnaryOperation {
 }
 
 fn comma_to_vec(expr: Expression, vm: &mut VirtualMachine) -> Vec<Value> {
+    // dbg!(&expr);
     match expr {
         Expression::NOP => vec![], // Empty argument list
         Expression::BinaryOperation(comma_operation) => {

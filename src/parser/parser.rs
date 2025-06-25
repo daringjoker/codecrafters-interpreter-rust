@@ -136,6 +136,7 @@ impl Parser {
 
     pub fn infix_binding_power(&self, op: &BinaryOperator) -> (f32, f32) {
         match op {
+            BinaryOperator::Comma => (0.1, 0.2),
             BinaryOperator::Assignment => (1.9, 1.2),
 
             BinaryOperator::Or => (2.0, 2.0),
@@ -156,7 +157,6 @@ impl Parser {
             BinaryOperator::Call => (9.1, 9.2),
 
             BinaryOperator::Dot => (10.1, 10.2),
-            BinaryOperator::Comma => (11.1, 11.2),
             _ => (0.0, 0.0),
         }
     }
