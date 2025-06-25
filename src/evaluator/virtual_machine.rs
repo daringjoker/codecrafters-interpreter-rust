@@ -67,7 +67,7 @@ impl VirtualMachine {
             .current_scope
             .borrow_mut()
             .get_return_value()
-            .unwrap_or(Value::Nothing);
+            .unwrap_or(Value::Nil);
         let prev_scope = self.current_scope.clone();
         self.current_scope = next_scope.clone();
         if is_killed && prev_scope.borrow().level != ScopeLevel::Closure {
@@ -88,7 +88,7 @@ impl VirtualMachine {
             .current_scope
             .borrow_mut()
             .get_return_value()
-            .unwrap_or(Value::Nothing);
+            .unwrap_or(Value::Nil);
         self.exit_child_scope();
         return ret_val;
     }
