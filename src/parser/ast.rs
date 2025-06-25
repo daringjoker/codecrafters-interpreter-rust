@@ -108,7 +108,7 @@ pub struct ForStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnStatement {
-    value: Option<Expression>,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,9 +119,9 @@ pub struct VariableDeclaration {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
-    name: String,
-    parameters: Vec<String>,
-    body: Block,
+    pub name: String,
+    pub parameters: Vec<String>,
+    pub body: Block,
 }
 
 #[derive(Debug, Clone, PartialEq)]

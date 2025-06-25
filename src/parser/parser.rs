@@ -396,8 +396,17 @@ impl Parser {
         }
     }
 
-    fn parse_return_statement(&self) -> ReturnStatement {
-        unimplemented!()
+    fn parse_return_statement(&mut self) -> ReturnStatement {
+        self.expect_next_token_to_be(Token::Keyword(KW::RETURN));
+        let value = if self.current != Token::Semicolon && self.current != Token::EOF {
+            Some(self.parse_expression_within_binding_power(0.0))
+        } else {
+            None
+        };
+        if self.current == Token::Semicolon {
+            self.advance();
+        }
+        ReturnStatement { value }
     }
 
     fn parse_variable_declaration(&mut self) -> VariableDeclaration {
@@ -419,8 +428,30 @@ impl Parser {
         }
     }
 
-    fn parse_function_declaration(&self) -> FunctionDeclaration {
-        unimplemented!()
+    fn parse_function_declaration(&mut self) -> FunctionDeclaration {
+        self.expect_next_token_to_be(Token::Keyword(KW::FUN));
+        let identifier = self.parse_identifier().expect("Expected function name");
+        self.advance();
+        self.expect_next_token_to_be(Token::LeftParenthesis);
+        let mut parameters = vec![];
+        if self.current != Token::RightParenthesis {
+            loop {
+                let param = self.parse_identifier().expect("Expected parameter name");
+                self.advance();
+                parameters.push(param);
+                if self.current == Token::RightParenthesis {
+                    break;
+                }
+                self.expect_next_token_to_be(Token::Comma);
+            }
+        }
+        self.expect_next_token_to_be(Token::RightParenthesis);
+        let body = self.parse_block_statement();
+        FunctionDeclaration {
+            name: identifier,
+            parameters,
+            body,
+        }
     }
 
     fn parse_block_statement(&mut self) -> Block {

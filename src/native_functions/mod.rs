@@ -1,7 +1,7 @@
 use crate::evaluator::callable::Callable;
 use std::rc::Rc;
 
-pub mod examples;
+pub mod time;
 
 // Re-export the macro
 pub use native_function_macro::native_function;
@@ -28,6 +28,6 @@ pub fn get_all_native_functions() -> Vec<&'static NativeFunctionRegistration> {
 
 /// Find a native function by name
 pub fn find_native_function(name: &str) -> Option<&'static NativeFunctionRegistration> {
-    inventory::iter::<NativeFunctionRegistration>()
-        .find(|reg| reg.name == name)
+    inventory::iter::<NativeFunctionRegistration>().find(|reg| reg.name == name)
 }
+

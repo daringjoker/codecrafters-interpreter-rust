@@ -7,9 +7,11 @@ mod native_functions;
 mod parser;
 mod tokenizer;
 
-use evaluator::evaluate::{Eval, VirtualMachine};
 use parser::parser::Parser;
 use tokenizer::tokenize::Tokenizer;
+
+use crate::evaluator::evaluate::Eval;
+use crate::evaluator::virtual_machine::VirtualMachine;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

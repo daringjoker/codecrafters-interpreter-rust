@@ -1,7 +1,12 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse::Parse, parse::ParseStream, parse_macro_input, ItemFn, LitStr, ReturnType, Type};
+use syn::{
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    token::Token,
+    ItemFn, LitStr, ReturnType, Type,
+};
 
 // Custom parser for the attribute arguments
 struct NativeFunctionArgs {
@@ -29,6 +34,17 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // Get function parameters
     let inputs = &input_fn.sig.inputs;
+    let input_names = inputs.iter().filter_map(|arg| {
+        if let syn::FnArg::Typed(pat_type) = arg {
+            if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
+                Some(pat_ident.ident.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
     let param_count = inputs.len();
 
     // Generate parameter conversion code
@@ -46,43 +62,43 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
                 Type::Path(type_path) if type_path.path.is_ident("u32") => {
                     quote! {
                         let #param_name = match &args[#i] {
-                            crate::evaluator::evaluate::Value::Number(n) => *n as u32,
-                            crate::evaluator::evaluate::Value::Int(n) => *n as u32,
-                            _ => return crate::evaluator::evaluate::Value::Nothing,
+                            crate::evaluator::value::Value::Number(n) => *n as u32,
+                            crate::evaluator::value::Value::Int(n) => *n as u32,
+                            _ => return crate::evaluator::value::Value::Nothing,
                         };
                     }
                 }
                 Type::Path(type_path) if type_path.path.is_ident("i32") => {
                     quote! {
                         let #param_name = match &args[#i] {
-                            crate::evaluator::evaluate::Value::Number(n) => *n as i32,
-                            crate::evaluator::evaluate::Value::Int(n) => *n as i32,
-                            _ => return crate::evaluator::evaluate::Value::Nothing,
+                            crate::evaluator::value::Value::Number(n) => *n as i32,
+                            crate::evaluator::value::Value::Int(n) => *n as i32,
+                            _ => return crate::evaluator::value::Value::Nothing,
                         };
                     }
                 }
                 Type::Path(type_path) if type_path.path.is_ident("f64") => {
                     quote! {
                         let #param_name = match &args[#i] {
-                            crate::evaluator::evaluate::Value::Number(n) => *n,
-                            crate::evaluator::evaluate::Value::Int(n) => *n as f64,
-                            _ => return crate::evaluator::evaluate::Value::Nothing,
+                            crate::evaluator::value::Value::Number(n) => *n,
+                            crate::evaluator::value::Value::Int(n) => *n as f64,
+                            _ => return crate::evaluator::value::Value::Nothing,
                         };
                     }
                 }
                 Type::Path(type_path) if type_path.path.is_ident("String") => {
                     quote! {
                         let #param_name = match &args[#i] {
-                            crate::evaluator::evaluate::Value::String(s) => s.clone(),
-                            _ => return crate::evaluator::evaluate::Value::Nothing,
+                            crate::evaluator::value::Value::String(s) => s.clone(),
+                            _ => return crate::evaluator::value::Value::Nothing,
                         };
                     }
                 }
                 Type::Path(type_path) if type_path.path.is_ident("bool") => {
                     quote! {
                         let #param_name = match &args[#i] {
-                            crate::evaluator::evaluate::Value::Boolean(b) => *b,
-                            _ => return crate::evaluator::evaluate::Value::Nothing,
+                            crate::evaluator::value::Value::Boolean(b) => *b,
+                            _ => return crate::evaluator::value::Value::Nothing,
                         };
                     }
                 }
@@ -99,38 +115,38 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
         ReturnType::Default => {
             quote! {
                 #fn_ident(#(#param_names),*);
-                crate::evaluator::evaluate::Value::Nil
+                crate::evaluator::value::Value::Nil
             }
         }
         ReturnType::Type(_, return_type) => match return_type.as_ref() {
             Type::Path(type_path) if type_path.path.is_ident("u32") => {
                 quote! {
                     let result = #fn_ident(#(#param_names),*);
-                    crate::evaluator::evaluate::Value::Int(result as i64)
+                    crate::evaluator::value::Value::Int(result as i64)
                 }
             }
             Type::Path(type_path) if type_path.path.is_ident("i32") => {
                 quote! {
                     let result = #fn_ident(#(#param_names),*);
-                    crate::evaluator::evaluate::Value::Int(result as i64)
+                    crate::evaluator::value::Value::Int(result as i64)
                 }
             }
             Type::Path(type_path) if type_path.path.is_ident("f64") => {
                 quote! {
                     let result = #fn_ident(#(#param_names),*);
-                    crate::evaluator::evaluate::Value::Number(result)
+                    crate::evaluator::value::Value::Number(result)
                 }
             }
             Type::Path(type_path) if type_path.path.is_ident("String") => {
                 quote! {
                     let result = #fn_ident(#(#param_names),*);
-                    crate::evaluator::evaluate::Value::String(result)
+                    crate::evaluator::value::Value::String(result)
                 }
             }
             Type::Path(type_path) if type_path.path.is_ident("bool") => {
                 quote! {
                     let result = #fn_ident(#(#param_names),*);
-                    crate::evaluator::evaluate::Value::Boolean(result)
+                    crate::evaluator::value::Value::Boolean(result)
                 }
             }
             _ => {
@@ -148,10 +164,10 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
         pub struct #wrapper_name;
 
         impl crate::evaluator::callable::Callable for #wrapper_name {
-            fn call(&self, _vm: &mut crate::evaluator::evaluate::VirtualMachine, args: Vec<crate::evaluator::evaluate::Value>) -> crate::evaluator::evaluate::Value {
+            fn call(&self, _vm: &mut crate::evaluator::virtual_machine::VirtualMachine, args: Vec<crate::evaluator::value::Value>) -> crate::evaluator::value::Value {
                 // Check arity
                 if args.len() != #param_count {
-                    return crate::evaluator::evaluate::Value::Nothing;
+                    return crate::evaluator::value::Value::Nothing;
                 }
 
                 // Convert arguments
@@ -171,6 +187,10 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
 
             fn callable_type(&self) -> crate::evaluator::callable::CallableType {
                 crate::evaluator::callable::CallableType::NativeFunction
+            }
+
+            fn arguments(&self) -> Vec<String> {
+                vec![#(stringify!(#input_names).to_string()),*]
             }
         }
 

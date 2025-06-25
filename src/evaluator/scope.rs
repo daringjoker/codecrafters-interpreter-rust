@@ -1,4 +1,4 @@
-use crate::evaluator::evaluate::{runtime_error, Value};
+use crate::evaluator::{evaluate::runtime_error, value::Value};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone, Debug)]

@@ -1,116 +1,44 @@
-use super::scope::Scope;
-use crate::parser::ast::*;
-use std::cell::RefCell;
-use std::fmt::Display;
-use std::process::exit;
-use std::rc::Rc;
+use crate::{
+    evaluator::{callable::Callable, value::Value, virtual_machine::VirtualMachine},
+    parser::ast::*,
+};
+use std::{process::exit, rc::Rc};
 
 pub trait Eval {
     fn evaluate(&self, vm: &mut VirtualMachine) -> Value;
 }
 
-pub struct VirtualMachine {
-    root_scope: Rc<RefCell<Scope>>,
-    current_scope: Rc<RefCell<Scope>>,
-}
-
-impl VirtualMachine {
-    pub fn new() -> Self {
-        let global_scope = Rc::new(RefCell::new(Scope::new()));
-        let mut machine = VirtualMachine {
-            root_scope: global_scope.clone(),
-            current_scope: global_scope.clone(),
-        };
-
-        // Register native functions in the global scope
-        machine.register_all_native_functions();
-
-        machine
+impl Callable for FunctionDeclaration {
+    fn callable_type(&self) -> super::callable::CallableType {
+        super::callable::CallableType::UserDefinedFunction
     }
-
-    /// Register all native functions from the compile-time registry
-    fn register_all_native_functions(&mut self) {
-        for registration in crate::native_functions::get_all_native_functions() {
-            let callable = registration.create_callable();
-            self.root_scope.borrow_mut().define_variable(
-                registration.name.to_string(),
-                Some(Value::Function(callable)),
-            );
+    fn call(&self, vm: &mut VirtualMachine, args: Vec<Value>) -> Value {
+        if args.len() != self.parameters.len() {
+            runtime_error(&format!(
+                "Function {} expects {} arguments, got {}",
+                self.name,
+                self.parameters.len(),
+                args.len()
+            ));
         }
-    }
-
-    pub fn enter_child_scope(&mut self) {
-        let new_scope = Rc::new(RefCell::new(Scope::new()));
-        new_scope.borrow_mut().parent_scope = Some(self.current_scope.clone());
-        self.current_scope = new_scope.clone();
-    }
-    pub fn exit_child_scope(&mut self) {
-        let cur_scope = self.current_scope.clone();
-        self.current_scope = cur_scope
-            .as_ref()
-            .borrow()
-            .parent_scope
-            .clone()
-            .unwrap_or(self.root_scope.clone());
-    }
-}
-
-#[derive(Clone)]
-pub enum Value {
-    Number(f64),
-    Int(i64),
-    String(String),
-    Boolean(bool),
-    Nothing,
-    Nil,
-    Function(Rc<dyn crate::evaluator::callable::Callable>),
-}
-
-impl Value {
-    pub fn is_nothing(&self) -> bool {
-        matches!(self, Value::Nothing)
-    }
-}
-
-impl Into<bool> for Value {
-    fn into(self) -> bool {
-        match self {
-            Value::Number(n) => n != 0.0,
-            Value::Int(n) => n != 0,
-            Value::String(_) => true,
-            Value::Boolean(b) => b,
-            Value::Nil => false,
-            Value::Nothing => false,
-            Value::Function(_) => true,
+        vm.enter_child_scope();
+        for (param, arg) in self.parameters.iter().zip(args) {
+            vm.current_scope
+                .borrow_mut()
+                .define_variable(param.clone(), Some(arg));
         }
+        let result = self.body.evaluate(vm);
+        vm.exit_child_scope();
+        result
     }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Value::Number(n) => write!(f, "{}", n),
-            Value::Int(n) => write!(f, "{}", n),
-            Value::String(n) => write!(f, "{}", n),
-            Value::Boolean(n) => write!(f, "{}", n),
-            Value::Nil => write!(f, "nil"),
-            Value::Nothing => write!(f, "Nothing"),
-            Value::Function(func) => write!(f, "<native fn {}>", func.name()),
-        }
+    fn name(&self) -> String {
+        self.name.clone()
     }
-}
-
-impl std::fmt::Debug for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Number(n) => write!(f, "Number({})", n),
-            Value::Int(n) => write!(f, "Int({})", n),
-            Value::String(s) => write!(f, "String({:?})", s),
-            Value::Boolean(b) => write!(f, "Boolean({})", b),
-            Value::Nothing => write!(f, "Nothing"),
-            Value::Nil => write!(f, "Nil"),
-            Value::Function(func) => write!(f, "Function({})", func.name()),
-        }
+    fn arity(&self) -> usize {
+        self.parameters.len()
+    }
+    fn arguments(&self) -> Vec<String> {
+        self.parameters.clone()
     }
 }
 
@@ -157,12 +85,25 @@ impl Eval for Statement {
                 }
                 return Value::Nothing;
             }
+
             Statement::While(while_loop) => {
                 while while_loop.condition.evaluate(vm).into() {
                     while_loop.body.evaluate(vm);
                 }
                 return Value::Nothing;
             }
+
+            Statement::Declaration(Declaration::Function(func)) => {
+                vm.current_scope.as_ref().borrow_mut().define_variable(
+                    func.name.clone(),
+                    Some(Value::Function(
+                        Rc::new(func.clone()),
+                        Some(vm.current_scope.clone()),
+                    )),
+                );
+                return Value::Nothing;
+            }
+
             Statement::For(for_loop) => {
                 if let Some(decl) = for_loop.initializer.as_ref() {
                     decl.evaluate(vm);
@@ -180,6 +121,14 @@ impl Eval for Statement {
                     }
                 }
                 return Value::Nothing;
+            }
+            Statement::Return(ret) => {
+                let value = ret
+                    .value
+                    .as_ref()
+                    .map_or(Value::Nothing, |v| v.evaluate(vm));
+                vm.exit_child_scope();
+                return value;
             }
             _ => unimplemented!(),
         }
@@ -341,7 +290,7 @@ impl Eval for BinaryOperation {
                 if let Expression::Identifier(id) = &self.left.as_ref() {
                     let func_option = vm.current_scope.borrow().get_variable_value(id.as_str());
                     if let Some(func) = func_option {
-                        if let Value::Function(func) = func {
+                        if let Value::Function(func, _closure) = func {
                             let args = comma_to_vec(*self.right.clone(), vm);
                             return func.call(vm, args);
                         } else {
@@ -414,21 +363,6 @@ fn comma_to_vec(expr: Expression, vm: &mut VirtualMachine) -> Vec<Value> {
             }
         }
         _ => vec![expr.evaluate(vm)],
-    }
-}
-
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Value::Number(a), Value::Number(b)) => a == b,
-            (Value::Int(a), Value::Int(b)) => a == b,
-            (Value::String(a), Value::String(b)) => a == b,
-            (Value::Boolean(a), Value::Boolean(b)) => a == b,
-            (Value::Nothing, Value::Nothing) => true,
-            (Value::Nil, Value::Nil) => true,
-            (Value::Function(a), Value::Function(b)) => a.name() == b.name(),
-            _ => false,
-        }
     }
 }
 

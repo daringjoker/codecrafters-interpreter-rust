@@ -10,3 +10,7 @@ pub fn clock() -> f64 {
         .as_secs_f64()
 }
 
+#[native_function("add")]
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}

@@ -1,6 +1,6 @@
-use crate::evaluator::evaluate::{Value, VirtualMachine};
+use crate::evaluator::{value::Value, virtual_machine::VirtualMachine};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CallableType {
     NativeFunction,
     UserDefinedFunction,
@@ -11,4 +11,5 @@ pub trait Callable {
     fn arity(&self) -> usize;
     fn name(&self) -> String;
     fn callable_type(&self) -> CallableType;
+    fn arguments(&self) -> Vec<String>;
 }
