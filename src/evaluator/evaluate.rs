@@ -299,44 +299,34 @@ impl Eval for BinaryOperation {
                 self.right.evaluate(vm)
             }
             BinaryOperator::Call => {
-                if let Expression::Identifier(id) = &self.left.as_ref() {
-                    let func_option = vm.current_scope.borrow().get_variable_value(id.as_str());
-                    if let Some(func) = func_option {
-                        if let Value::Function(func, closure) = func {
-                            let args = comma_to_vec(*self.right.clone(), vm);
-                            // Enter a new scope for the function call
-                            // eprintln!("Calling function {} with args: {:?}", id, args);
-                            if args.len() != func.arity() {
-                                runtime_error(&format!(
-                                    "Function {} expects {} arguments, got {}",
-                                    id,
-                                    func.arity(),
-                                    args.len()
-                                ));
-                            }
-                            let curr_scope = vm.enter_closured_scope(closure);
-                            let retval = func.call(vm, args.clone());
-                            let scoped_return_value = vm.exit_child_scope(curr_scope);
-                            if func.callable_type()
-                                == super::callable::CallableType::UserDefinedFunction
-                            {
-                                // eprintln!(
-                                //     " {}({:?}) returned: {:?}",
-                                //     id, &args, scoped_return_value
-                                // );
-                                return scoped_return_value;
-                            } else {
-                                // eprintln!(" {}({:?}) returned: {:?}", id, &args, retval);
-                                return retval;
-                            }
-                        } else {
-                            runtime_error(&format!("{} is not a function", id));
-                        }
+                let callable = self.left.evaluate(vm);
+                if let Value::Function(func, closure) = callable {
+                    let args = comma_to_vec(*self.right.clone(), vm);
+                    // Enter a new scope for the function call
+                    // eprintln!("Calling function {} with args: {:?}", id, args);
+                    if args.len() != func.arity() {
+                        runtime_error(&format!(
+                            "Function {} expects {} arguments, got {}",
+                            func.name(),
+                            func.arity(),
+                            args.len()
+                        ));
+                    }
+                    let curr_scope = vm.enter_closured_scope(closure);
+                    let retval = func.call(vm, args.clone());
+                    let scoped_return_value = vm.exit_child_scope(curr_scope);
+                    if func.callable_type() == super::callable::CallableType::UserDefinedFunction {
+                        // eprintln!(
+                        //     " {}({:?}) returned: {:?}",
+                        //     id, &args, scoped_return_value
+                        // );
+                        return scoped_return_value;
                     } else {
-                        runtime_error(&format!("Function {} not found", id));
+                        // eprintln!(" {}({:?}) returned: {:?}", id, &args, retval);
+                        return retval;
                     }
                 } else {
-                    runtime_error("Left-hand side of call must be an identifier");
+                    runtime_error(&format!("{} is not a function", callable));
                 }
             }
             BinaryOperator::Assignment => {
