@@ -18,7 +18,7 @@ impl VirtualMachine {
         let mut machine = VirtualMachine {
             root_scope: global_scope.clone(),
             current_scope: global_scope.clone(),
-            call_stack: vec![global_scope.clone()],
+            call_stack: vec![],
         };
 
         // Register native functions in the global scope
@@ -61,7 +61,7 @@ impl VirtualMachine {
         let next_scope = self
             .call_stack
             .pop()
-            .expect("Call stack is empty, cannot exit child scope");
+            .unwrap_or_else(|| runtime_error("Call stack is empty, cannot exit scope!"));
         let is_killed = !self.current_scope.borrow().is_alive();
         let retval = self
             .current_scope

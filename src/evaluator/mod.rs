@@ -1,5 +1,12 @@
+pub mod ast_node;
+pub mod binary_operations;
+pub mod block;
 pub mod callable;
 pub mod evaluate;
+pub mod expression;
+pub mod literal;
 pub mod scope;
+pub mod statement;
+pub mod unary_operations;
 pub mod value;
 pub mod virtual_machine;

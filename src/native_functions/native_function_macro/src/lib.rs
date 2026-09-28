@@ -205,4 +205,3 @@ pub fn native_function(args: TokenStream, input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-
